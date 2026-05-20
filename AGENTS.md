@@ -2,6 +2,10 @@
 
 This file provides guidance to agents when working with code in this repository.
 
+## Coding Guidelines
+
+* Avoid using `unwrap()`, `expect()`, and other methods that can cause panics. Use proper error handling with `Result`, `Option`, and the `?` operator instead.
+
 ## Commit Guidelines
 
 * Use `jj diff --git --no-pager` to see uncommitted changes.
