@@ -1,7 +1,8 @@
 use std::net::IpAddr;
 
-use axum::Router;
 use clap::Parser;
+
+use github_mock_api::MockServer;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -18,15 +19,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     let args = Args::parse();
 
-    let app = Router::new();
+    let mut server = MockServer::start_on(args.host, args.port).await?;
 
-    let listener = tokio::net::TcpListener::bind((args.host, args.port))
-        .await?;
+    tracing::info!("Server running on {}", server.uri());
 
-    tracing::info!("Server running on http://{}", listener.local_addr()?);
-
-    axum::serve(listener, app)
-        .await?;
-
+    tokio::signal::ctrl_c().await?;
+    server.stop().await?;
+    
     Ok(())
 }
