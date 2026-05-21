@@ -2,3 +2,7 @@
 
 # Added by cargo
 /target
+
+# Coverage (cargo llvm-cov)
+lcov.info
+coverage-html/

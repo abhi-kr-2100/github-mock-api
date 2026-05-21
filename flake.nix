@@ -7,12 +7,20 @@
   outputs = { self, nixpkgs, flake-utils }:
     flake-utils.lib.eachDefaultSystem (system: let
       pkgs = import nixpkgs { inherit system; };
+      llvm = pkgs.llvmPackages.llvm;
     in {
       devShells.default = pkgs.mkShell {
         packages = with pkgs; [
           cargo
+          cargo-llvm-cov
+          llvm
           rustc
         ];
+
+        shellHook = ''
+          export LLVM_COV="${llvm}/bin/llvm-cov"
+          export LLVM_PROFDATA="${llvm}/bin/llvm-profdata"
+        '';
       };
     });
 }
