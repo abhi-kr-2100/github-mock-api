@@ -1,6 +1,10 @@
+use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::sync::Arc;
 
+use axum::routing::get;
 use axum::Router;
+use tokio::sync::RwLock;
 use tokio::sync::mpsc;
 
 #[derive(Debug, thiserror::Error)]
@@ -16,6 +20,17 @@ pub enum Error {
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
+
+mod repository;
+mod util;
+pub use repository::Repository;
+
+type RepoKey = (String, String);
+
+#[derive(Clone, Default)]
+pub(crate) struct AppState {
+    pub(crate) repositories: Arc<RwLock<HashMap<RepoKey, Repository>>>,
+}
 
 /// A mock GitHub API server that can be used for testing.
 /// 
@@ -37,6 +52,7 @@ pub struct MockServer {
     address: SocketAddr,
     shutdown_sender: Option<mpsc::Sender<()>>,
     server_handle: Option<tokio::task::JoinHandle<()>>,
+    state: AppState,
 }
 
 impl MockServer {
@@ -53,8 +69,11 @@ impl MockServer {
             .await?;
         
         let address = listener.local_addr()?;
-        
-        let app = Router::new();
+
+        let state = AppState::default();
+        let app = Router::new()
+            .route("/repos/{owner}/{repo}", get(repository::get_repository))
+            .with_state(state.clone());
         
         let (shutdown_sender, mut shutdown_receiver) = mpsc::channel(1);
         
@@ -74,6 +93,7 @@ impl MockServer {
             address,
             shutdown_sender: Some(shutdown_sender),
             server_handle: Some(server_handle),
+            state,
         })
     }
 
@@ -217,8 +237,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_stop_after_server_crash() {
-        let mut server = MockServer::start().await.expect("Failed to start server");
+    async fn test_stop_after_server_crash() -> Result<()> {
+        let mut server = MockServer::start().await?;
 
         // Abort the server handle to simulate a crash (this drops the shutdown_receiver)
         if let Some(handle) = server.server_handle.take() {
@@ -230,5 +250,6 @@ mod tests {
         // Calling stop on an already stopped server should not lead to an error
         let result = server.stop().await;
         assert!(result.is_ok());
+        Ok(())
     }
 }
