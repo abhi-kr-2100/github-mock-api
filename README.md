@@ -1,6 +1,6 @@
 # GitHub Mock API
 
-A server and cross-language object-oriented library for mocking the GitHub API. Written in Rust, with bindings for multiple languages.
+A server and library for mocking the GitHub API. Written in Rust, with cross-language bindings available — see [docs/cross-language.md](docs/cross-language.md).
 
 ## Usage
 
