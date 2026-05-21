@@ -13,6 +13,7 @@
         packages = with pkgs; [
           cargo
           cargo-llvm-cov
+          clang
           llvm
           rustc
         ];

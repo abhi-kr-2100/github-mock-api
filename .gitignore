@@ -6,3 +6,6 @@
 # Coverage (cargo llvm-cov)
 lcov.info
 coverage-html/
+
+# Generated Diplomat C headers
+include/github_mock_api/
