@@ -1,0 +1,4 @@
+[alias]
+cov-term = "llvm-cov"
+cov-lcov = "llvm-cov --lcov --output-path lcov.info"
+cov-html = "llvm-cov --html --output-dir coverage-html"
