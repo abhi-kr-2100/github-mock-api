@@ -9,13 +9,17 @@
       pkgs = import nixpkgs { inherit system; };
       llvm = pkgs.llvmPackages.llvm;
       libclang = pkgs.llvmPackages.libclang;
+      jna = pkgs.jna;
     in {
       devShells.default = pkgs.mkShell {
         packages = with pkgs; [
           cargo
           cargo-llvm-cov
           clang
+          dart
           libclang
+          jna
+          kotlin
           llvm
           ruby
           rustc
@@ -25,6 +29,7 @@
           export LLVM_COV="${llvm}/bin/llvm-cov"
           export LLVM_PROFDATA="${llvm}/bin/llvm-profdata"
           export LIBCLANG_PATH="${libclang.lib}/lib"
+          export JNA_JAR="${jna}/share/java/jna.jar"
         '';
       };
     });
