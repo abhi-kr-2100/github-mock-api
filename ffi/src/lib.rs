@@ -31,6 +31,7 @@ mod ffi {
         server: RustMockServer,
     }
 
+    #[diplomat::attr(supports = custom_errors, error)]
     pub enum MockServerError {
         Io,
         Shutdown,
