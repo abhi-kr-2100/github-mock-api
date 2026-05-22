@@ -13,30 +13,59 @@ enum BuildError {
     #[error("failed to load config.toml: {0}")]
     ConfigLoad(String),
 
-    #[error("failed to generate C bindings with diplomat: {0}")]
+    #[error("failed to generate bindings with diplomat: {0}")]
     GenFailed(#[from] std::io::Error),
+}
+
+struct BindingTarget<'a> {
+    language: &'a str,
+    out_folder: PathBuf,
 }
 
 fn main() -> Result<(), BuildError> {
     let manifest_dir = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR")?);
     let project_root = manifest_dir.parent().ok_or(BuildError::NoParentDir)?;
     let entry = manifest_dir.join("src/lib.rs");
-    let out_folder = project_root.join("include/github_mock_api");
     let config_file = project_root.join("config.toml");
+    let include_folder = project_root.join("include/github_mock_api");
+    let bindings_folder = project_root.join("bindings");
 
     let mut config = diplomat_tool::config::Config::default();
     if config_file.exists() {
         config.read_file(&config_file).map_err(BuildError::ConfigLoad)?;
     }
 
-    diplomat_tool::r#gen(
-        &entry,
-        "c",
-        &out_folder,
-        &diplomat_tool::DocsUrlGenerator::with_base_urls(None, HashMap::new()),
-        config,
-        false,
-    ).map_err(BuildError::GenFailed)?;
+    let docs = diplomat_tool::DocsUrlGenerator::with_base_urls(None, HashMap::new());
+    let targets = [
+        BindingTarget {
+            language: "c",
+            out_folder: include_folder.clone(),
+        },
+        BindingTarget {
+            language: "cpp",
+            out_folder: include_folder,
+        },
+        BindingTarget {
+            language: "dart",
+            out_folder: bindings_folder.join("dart"),
+        },
+        BindingTarget {
+            language: "kotlin",
+            out_folder: bindings_folder.join("kotlin"),
+        },
+    ];
+
+    for target in targets {
+        diplomat_tool::r#gen(
+            &entry,
+            target.language,
+            &target.out_folder,
+            &docs,
+            config.clone(),
+            false,
+        )
+        .map_err(BuildError::GenFailed)?;
+    }
 
     println!("cargo:rerun-if-changed={}", entry.display());
     println!("cargo:rerun-if-changed={}", config_file.display());
