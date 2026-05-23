@@ -47,6 +47,15 @@ pub(crate) enum TestError {
     #[error("run Dart API smoke test")]
     RunDartTest,
 
+    #[error("Python runtime required for Python API tests (python3)")]
+    NoPythonRuntime,
+
+    #[error("run Python API smoke test")]
+    RunPythonTest,
+
+    #[error("copy Python extension module")]
+    CopyModule,
+
     #[error("join classpath components")]
     JoinClasspath,
 

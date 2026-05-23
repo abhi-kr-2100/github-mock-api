@@ -1,5 +1,5 @@
 [workspace]
-members = [".", "ffi", "ruby"]
+members = [".", "ffi", "ruby", "python"]
 resolver = "3"
 
 [package]
