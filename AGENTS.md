@@ -14,6 +14,7 @@ This file provides guidance to agents when working with code in this repository.
 
 ## Commit Guidelines
 
+* Do not commit unless asked to.
 * Use `jj diff --git --no-pager` to see uncommitted changes.
 * Use `jj desc -m {commit_message}` to commit changes.
 * Follow the Conventional Commits format:
