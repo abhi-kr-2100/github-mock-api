@@ -466,7 +466,16 @@ dependencies = [
  "diplomat-runtime",
  "diplomat-tool",
  "github-mock-api",
+ "github-mock-api-ffi-common",
  "thiserror",
+ "tokio",
+]
+
+[[package]]
+name = "github-mock-api-ffi-common"
+version = "0.1.0"
+dependencies = [
+ "github-mock-api",
  "tokio",
 ]
 
@@ -475,6 +484,7 @@ name = "github-mock-api-python"
 version = "0.1.0"
 dependencies = [
  "github-mock-api",
+ "github-mock-api-ffi-common",
  "pyo3",
  "tokio",
 ]
@@ -484,6 +494,7 @@ name = "github-mock-api-ruby"
 version = "0.1.0"
 dependencies = [
  "github-mock-api",
+ "github-mock-api-ffi-common",
  "magnus",
  "tokio",
 ]

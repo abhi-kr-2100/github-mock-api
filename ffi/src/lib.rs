@@ -1,21 +1,3 @@
-use std::net::IpAddr;
-use std::sync::OnceLock;
-
-use tokio::runtime::Runtime;
-
-fn runtime() -> Result<&'static Runtime, ffi::MockServerError> {
-    static RUNTIME: OnceLock<Result<Runtime, ffi::MockServerError>> = OnceLock::new();
-    RUNTIME
-        .get_or_init(|| Runtime::new().map_err(|_| ffi::MockServerError::Io))
-        .as_ref()
-        .map_err(|err| *err)
-}
-
-fn parse_host(host: &str) -> Result<IpAddr, ffi::MockServerError> {
-    host.parse::<IpAddr>()
-        .map_err(|_| ffi::MockServerError::InvalidHost)
-}
-
 #[diplomat::bridge]
 mod ffi {
     use std::fmt::Write as _;
@@ -23,7 +5,7 @@ mod ffi {
     use diplomat_runtime::DiplomatWrite;
     use github_mock_api::{Error, MockServer as RustMockServer};
 
-    use super::{parse_host, runtime};
+    use github_mock_api_ffi_common::{parse_host, runtime, CommonError};
 
     #[diplomat::rust_link(github_mock_api::MockServer, Struct)]
     #[diplomat::opaque_mut]
@@ -41,10 +23,22 @@ mod ffi {
 
     impl From<Error> for MockServerError {
         fn from(err: Error) -> Self {
+            match CommonError::from(err) {
+                CommonError::Io => MockServerError::Io,
+                CommonError::Shutdown => MockServerError::Shutdown,
+                CommonError::Join => MockServerError::Join,
+                CommonError::InvalidHost => MockServerError::InvalidHost,
+            }
+        }
+    }
+
+    impl From<CommonError> for MockServerError {
+        fn from(err: CommonError) -> Self {
             match err {
-                Error::Io(_) => MockServerError::Io,
-                Error::ShutdownError(_) => MockServerError::Shutdown,
-                Error::JoinError(_) => MockServerError::Join,
+                CommonError::Io => MockServerError::Io,
+                CommonError::Shutdown => MockServerError::Shutdown,
+                CommonError::Join => MockServerError::Join,
+                CommonError::InvalidHost => MockServerError::InvalidHost,
             }
         }
     }

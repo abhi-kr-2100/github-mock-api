@@ -33,7 +33,7 @@ fn compile(
     source: &Path,
     binary: &Path,
 ) -> Result<Command, TestError> {
-    let include = workspace_root()?.join("include");
+    let include = workspace_root()?.join("bindings").join("c");
     let lib_dirs = lib_dirs()?;
 
     let mut cmd = Command::new(compiler);
