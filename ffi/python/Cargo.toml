@@ -10,7 +10,8 @@ name = "github_mock_api_python"
 doctest = false
 
 [dependencies]
-github-mock-api = { path = ".." }
+github-mock-api = { path = "../../" }
+github-mock-api-ffi-common = { path = "../common" }
 pyo3 = { version = "0.28", default-features = false, features = ["macros"] }
 tokio = { version = "1", features = ["rt-multi-thread"] }
 

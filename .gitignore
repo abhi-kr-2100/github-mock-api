@@ -9,6 +9,5 @@ coverage-html/
 *.profraw
 
 # Generated Diplomat C headers
-include/github_mock_api/
 bindings/
 .dart_tool/
