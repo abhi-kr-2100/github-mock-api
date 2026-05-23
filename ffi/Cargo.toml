@@ -14,6 +14,7 @@ diplomat = "0.15"
 diplomat-runtime = "0.15"
 github-mock-api = { path = ".." }
 tokio = { version = "1", features = ["rt-multi-thread"] }
+github-mock-api-ffi-common = { path = "common" }
 
 [build-dependencies]
 diplomat-tool = "0.15"

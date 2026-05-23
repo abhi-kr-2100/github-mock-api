@@ -27,7 +27,6 @@ fn main() -> Result<(), BuildError> {
     let project_root = manifest_dir.parent().ok_or(BuildError::NoParentDir)?;
     let entry = manifest_dir.join("src/lib.rs");
     let config_file = project_root.join("config.toml");
-    let include_folder = project_root.join("include/github_mock_api");
     let bindings_folder = project_root.join("bindings");
 
     let mut config = diplomat_tool::config::Config::default();
@@ -39,11 +38,11 @@ fn main() -> Result<(), BuildError> {
     let targets = [
         BindingTarget {
             language: "c",
-            out_folder: include_folder.clone(),
+            out_folder: bindings_folder.join("c").join("github_mock_api"),
         },
         BindingTarget {
             language: "cpp",
-            out_folder: include_folder,
+            out_folder: bindings_folder.join("cpp").join("github_mock_api"),
         },
         BindingTarget {
             language: "dart",
