@@ -17,10 +17,11 @@
           cargo-llvm-cov
           clang
           dart
-          libclang
           jna
           kotlin
+          libclang
           llvm
+          python3
           ruby
           rustc
         ];
