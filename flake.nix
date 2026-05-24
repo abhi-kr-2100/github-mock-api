@@ -22,6 +22,7 @@
           libclang
           llvm
           python3
+          python3Packages.pytest
           ruby
           rustc
         ];
