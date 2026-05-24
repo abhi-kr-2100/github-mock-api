@@ -21,15 +21,18 @@ pub enum Error {
 
 pub type Result<T> = std::result::Result<T, Error>;
 
+mod release;
 mod repository;
 mod util;
+pub use release::Release;
 pub use repository::Repository;
 
-type RepoKey = (String, String);
+pub(crate) type RepoKey = (String, String);
 
 #[derive(Clone, Default)]
 pub(crate) struct AppState {
     pub(crate) repositories: Arc<RwLock<HashMap<RepoKey, Repository>>>,
+    pub(crate) releases: Arc<RwLock<HashMap<RepoKey, Vec<Release>>>>,
 }
 
 /// A mock GitHub API server that can be used for testing.
@@ -73,6 +76,22 @@ impl MockServer {
         let state = AppState::default();
         let app = Router::new()
             .route("/repos/{owner}/{repo}", get(repository::get_repository))
+            .route(
+                "/repos/{owner}/{repo}/releases",
+                get(release::list_releases),
+            )
+            .route(
+                "/repos/{owner}/{repo}/releases/latest",
+                get(release::get_latest_release),
+            )
+            .route(
+                "/repos/{owner}/{repo}/releases/tags/{tag}",
+                get(release::get_release_by_tag),
+            )
+            .route(
+                "/repos/{owner}/{repo}/releases/{release_id}",
+                get(release::get_release),
+            )
             .with_state(state.clone());
         
         let (shutdown_sender, mut shutdown_receiver) = mpsc::channel(1);
