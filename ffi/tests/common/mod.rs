@@ -56,7 +56,7 @@ pub(crate) enum TestError {
     #[error("Python runtime required for Python API tests (python3)")]
     NoPythonRuntime,
 
-    #[error("run Python API smoke test")]
+    #[error("run Python API tests")]
     RunPythonTest,
 
     #[error("copy Python extension module")]

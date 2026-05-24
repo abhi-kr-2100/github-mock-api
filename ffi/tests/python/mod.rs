@@ -16,6 +16,15 @@ fn which_python() -> Option<String> {
     None
 }
 
+fn which_pytest() -> Option<String> {
+    if let Ok(output) = Command::new("pytest").arg("--version").output() {
+        if output.status.success() {
+            return Some("pytest".to_string());
+        }
+    }
+    None
+}
+
 fn python_lib_extension() -> &'static str {
     if cfg!(target_os = "windows") {
         "dll"
@@ -69,30 +78,31 @@ fn build_python_cdylib() -> Result<(), TestError> {
 }
 
 #[test]
-fn python_mock_server_smoke_test() -> Result<(), TestError> {
+fn python_mock_server_tests() -> Result<(), TestError> {
     build_python_cdylib()?;
 
-    let python = which_python().ok_or(TestError::NoPythonRuntime)?;
     let root = workspace_root()?;
     let test_dir = root.join("ffi/tests/python");
 
-    // Copy the shared library to a name Python can import (github_mock_api.{pyd,so})
     let lib_path = python_lib_path()?;
     let module_path = test_dir.join(format!("github_mock_api.{}", python_module_extension()));
     std::fs::copy(&lib_path, &module_path).map_err(|_| TestError::CopyModule)?;
 
-    let mut cmd = Command::new(&python);
-    cmd.arg("mock_server.py").current_dir(&test_dir);
+    let mut cmd = if let Some(pytest) = which_pytest() {
+        let mut c = Command::new(pytest);
+        c.arg("test_mock_server.py");
+        c
+    } else {
+        let python = which_python().ok_or(TestError::NoPythonRuntime)?;
+        let mut c = Command::new(python);
+        c.arg("-m").arg("pytest").arg("test_mock_server.py");
+        c
+    };
+    cmd.current_dir(&test_dir);
     cmd.env(lib_path_env_var(), profile_dir()?);
 
     let status = cmd.status().map_err(|_| TestError::RunPythonTest)?;
-    assert!(
-        status.success(),
-        "Python API smoke test exited with failure"
-    );
-
-    // Clean up the copied module
-    let _ = std::fs::remove_file(&module_path);
+    assert!(status.success(), "Python API tests exited with failure");
 
     Ok(())
 }
