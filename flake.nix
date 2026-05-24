@@ -25,6 +25,7 @@
           llvm
           pkg-config
           python3
+          python3Packages.pytest
           ruby
           rustc
         ];

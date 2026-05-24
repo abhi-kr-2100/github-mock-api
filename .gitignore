@@ -8,6 +8,8 @@ lcov.info
 coverage-html/
 *.profraw
 
-# Generated Diplomat C headers
+# Generated Diplomat
 bindings/
+
 .dart_tool/
+__pycache__/
