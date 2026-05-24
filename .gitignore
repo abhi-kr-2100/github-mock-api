@@ -13,3 +13,10 @@ bindings/
 
 .dart_tool/
 __pycache__/
+
+*.so
+*.a
+*.dll
+*.pyc
+*.bundle
+*.dylib
