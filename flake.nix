@@ -15,6 +15,7 @@
         packages = with pkgs; [
           cargo
           cargo-llvm-cov
+          catch2
           clang
           dart
           jna

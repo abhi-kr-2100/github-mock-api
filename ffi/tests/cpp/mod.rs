@@ -57,21 +57,21 @@ fn compile(
 }
 
 #[test]
-fn cpp_mock_server_smoke_test() -> Result<(), TestError> {
+fn cpp_mock_server_tests() -> Result<(), TestError> {
     build_cdylib()?;
 
     let out_dir = target_dir()?.join("cpp-api-tests");
     create_dir_all(&out_dir).map_err(|_| TestError::CreateOutputDir)?;
 
     let cxx = which_cxx().ok_or(TestError::NoCxxCompiler)?;
-    let source = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/cpp/mock_server.cpp");
-    let binary = out_dir.join("mock_server");
+    let source = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/cpp/mock_server_tests.cpp");
+    let binary = out_dir.join("mock_server_tests");
 
     let mut cmd = compile(&cxx, &source, &binary)?;
     let compile_status = cmd.status().map_err(|_| TestError::RunCxxCompiler)?;
     assert!(
         compile_status.success(),
-        "failed to compile C++ API smoke test"
+        "failed to compile C++ API tests"
     );
 
     let run_status = Command::new(&binary)
@@ -79,7 +79,7 @@ fn cpp_mock_server_smoke_test() -> Result<(), TestError> {
         .map_err(|_| TestError::RunSmokeTest)?;
     assert!(
         run_status.success(),
-        "C++ API smoke test exited with failure"
+        "C++ API tests exited with failure"
     );
 
     Ok(())
