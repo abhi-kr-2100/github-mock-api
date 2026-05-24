@@ -23,6 +23,12 @@ pub(crate) enum TestError {
     #[error("run C++ compiler")]
     RunCxxCompiler,
 
+    #[error("pkg-config required to find check unit test framework")]
+    NoPkgConfig,
+
+    #[error("run C unit test binary")]
+    RunCTest,
+
     #[error("run C API smoke test binary")]
     RunSmokeTest,
 
