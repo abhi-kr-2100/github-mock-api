@@ -5,12 +5,10 @@ use crate::common::{
     lib_path_env_var, profile_dir, target_dir, workspace_root, TestError,
 };
 
-fn which_ruby() -> Option<String> {
-    for candidate in ["ruby"] {
-        if let Ok(output) = Command::new(candidate).arg("--version").output() {
-            if output.status.success() {
-                return Some(candidate.to_string());
-            }
+fn which_rspec() -> Option<String> {
+    if let Ok(output) = Command::new("rspec").arg("--version").output() {
+        if output.status.success() {
+            return Some("rspec".to_string());
         }
     }
     None
@@ -71,10 +69,10 @@ fn build_ruby_cdylib() -> Result<(), TestError> {
 }
 
 #[test]
-fn ruby_mock_server_smoke_test() -> Result<(), TestError> {
+fn ruby_mock_server_spec() -> Result<(), TestError> {
     build_ruby_cdylib()?;
 
-    let ruby = which_ruby().ok_or(TestError::NoRubyRuntime)?;
+    let rspec = which_rspec().ok_or(TestError::NoRubyRuntime)?;
     let root = workspace_root()?;
     let test_dir = root.join("ffi/tests/ruby");
 
@@ -82,17 +80,15 @@ fn ruby_mock_server_smoke_test() -> Result<(), TestError> {
     let module_path = test_dir.join(format!("github_mock_api_ruby.{}", ruby_module_extension()));
     std::fs::copy(&lib_path, &module_path).map_err(|_| TestError::CopyModule)?;
 
-    let mut cmd = Command::new(&ruby);
-    cmd.arg("mock_server.rb").current_dir(&test_dir);
+    let mut cmd = Command::new(&rspec);
+    cmd.arg("--format").arg("documentation").current_dir(&test_dir);
     cmd.env(lib_path_env_var(), profile_dir()?);
 
     let status = cmd.status().map_err(|_| TestError::RunRubyTest)?;
     assert!(
         status.success(),
-        "Ruby API smoke test exited with failure"
+        "Ruby API RSpec tests exited with failure"
     );
-
-    let _ = std::fs::remove_file(&module_path);
 
     Ok(())
 }

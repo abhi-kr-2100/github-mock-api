@@ -27,6 +27,7 @@
           python3
           python3Packages.pytest
           ruby
+          (ruby.withPackages (ps: with ps; [ rspec ]))
           rustc
         ];
 

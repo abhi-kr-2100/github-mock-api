@@ -65,10 +65,10 @@ pub(crate) enum TestError {
     #[error("join classpath components")]
     JoinClasspath,
 
-    #[error("Ruby runtime required for Ruby API tests (ruby)")]
+    #[error("Ruby runtime required for Ruby API tests (rspec)")]
     NoRubyRuntime,
 
-    #[error("run Ruby API smoke test")]
+    #[error("run Ruby API unit tests")]
     RunRubyTest,
 
     #[error("CARGO environment variable not set")]
