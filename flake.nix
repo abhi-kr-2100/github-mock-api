@@ -16,12 +16,14 @@
           cargo
           cargo-llvm-cov
           catch2
+          check
           clang
           dart
           jna
           kotlin
           libclang
           llvm
+          pkg-config
           python3
           ruby
           rustc
