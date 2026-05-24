@@ -22,9 +22,12 @@ pub enum Error {
 pub type Result<T> = std::result::Result<T, Error>;
 
 mod release;
+mod commit;
 mod repository;
 mod util;
+
 pub use release::Release;
+pub use commit::Commit;
 pub use repository::Repository;
 
 pub(crate) type RepoKey = (String, String);
@@ -33,6 +36,7 @@ pub(crate) type RepoKey = (String, String);
 pub(crate) struct AppState {
     pub(crate) repositories: Arc<RwLock<HashMap<RepoKey, Repository>>>,
     pub(crate) releases: Arc<RwLock<HashMap<RepoKey, Vec<Release>>>>,
+    pub(crate) commits: Arc<RwLock<HashMap<RepoKey, Vec<Commit>>>>,
 }
 
 /// A mock GitHub API server that can be used for testing.
@@ -92,6 +96,8 @@ impl MockServer {
                 "/repos/{owner}/{repo}/releases/{release_id}",
                 get(release::get_release),
             )
+            .route("/repos/{owner}/{repo}/commits", get(commit::list_commits))
+            .route("/repos/{owner}/{repo}/commits/{sha}", get(commit::get_commit))
             .with_state(state.clone());
         
         let (shutdown_sender, mut shutdown_receiver) = mpsc::channel(1);
