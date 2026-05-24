@@ -12,7 +12,7 @@ fn which_dart() -> Option<String> {
 }
 
 #[test]
-fn dart_mock_server_smoke_test() -> Result<(), TestError> {
+fn dart_mock_server_test() -> Result<(), TestError> {
     build_cdylib()?;
 
     let root = workspace_root()?;
@@ -21,7 +21,7 @@ fn dart_mock_server_smoke_test() -> Result<(), TestError> {
 
     let dart = which_dart().ok_or(TestError::NoDartRuntime)?;
 
-    // Fetch Dart package dependencies (package:ffi, package:meta)
+    // Fetch Dart package dependencies (package:ffi, package:meta, package:test)
     let pub_get = Command::new(&dart)
         .arg("pub")
         .arg("get")
@@ -34,10 +34,10 @@ fn dart_mock_server_smoke_test() -> Result<(), TestError> {
         test_dir.display()
     );
 
-    // Run the smoke test with the library preloaded so @ffi.Native symbols resolve
+    // Run unit tests with the library preloaded so @ffi.Native symbols resolve
     let mut cmd = Command::new(&dart);
-    cmd.arg("run")
-        .arg("mock_server.dart")
+    cmd.arg("test")
+        .arg("mock_server_test.dart")
         .current_dir(&test_dir);
     for (key, val) in preload_env_vars(&lib_path) {
         cmd.env(key, val);
@@ -46,7 +46,7 @@ fn dart_mock_server_smoke_test() -> Result<(), TestError> {
     let status = cmd.status().map_err(|_| TestError::RunDartTest)?;
     assert!(
         status.success(),
-        "Dart API smoke test exited with failure"
+        "Dart API tests exited with failure"
     );
 
     Ok(())
