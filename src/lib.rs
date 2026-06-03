@@ -42,14 +42,14 @@ pub(crate) struct AppState {
 }
 
 impl AppState {
-    pub async fn add_release(&self, owner: &str, repo: &str, release: Release) {
-        let key = (owner.to_lowercase(), repo.to_lowercase());
+    pub async fn add_release(&self, release: Release) {
+        let key = (release.owner.to_lowercase(), release.repo.to_lowercase());
         let mut releases = self.releases.write().await;
         releases.entry(key).or_default().push(release);
     }
 
-    pub async fn add_commit(&self, owner: &str, repo: &str, commit: Commit) {
-        let key = (owner.to_lowercase(), repo.to_lowercase());
+    pub async fn add_commit(&self, commit: Commit) {
+        let key = (commit.owner.to_lowercase(), commit.repo.to_lowercase());
         let mut commits = self.commits.write().await;
         commits.entry(key).or_default().push(commit);
     }
@@ -188,13 +188,13 @@ impl MockServer {
     }
 
     /// Register a mocked release with the server.
-    pub async fn add_release(&self, owner: &str, repo: &str, release: Release) {
-        self.state.add_release(owner, repo, release).await;
+    pub async fn add_release(&self, release: Release) {
+        self.state.add_release(release).await;
     }
 
     /// Register a mocked commit with the server.
-    pub async fn add_commit(&self, owner: &str, repo: &str, commit: Commit) {
-        self.state.add_commit(owner, repo, commit).await;
+    pub async fn add_commit(&self, commit: Commit) {
+        self.state.add_commit(commit).await;
     }
 
     /// Register a mocked repository with the server.

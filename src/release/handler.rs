@@ -115,7 +115,7 @@ mod tests {
         let server = MockServer::start().await.unwrap();
 
         let release = Release::new("owner", "repo", "v1.0.0");
-        server.add_release("owner", "repo", release).await;
+        server.add_release(release).await;
 
         let client = Client::new();
         let response = client
@@ -135,7 +135,7 @@ mod tests {
         let server = MockServer::start().await.unwrap();
         let release = Release::new("owner", "repo", "v1.0.0");
         let id = release.id;
-        server.add_release("owner", "repo", release).await;
+        server.add_release(release).await;
 
         let client = Client::new();
         let response = client
@@ -153,7 +153,7 @@ mod tests {
     async fn test_get_release_by_tag() {
         let server = MockServer::start().await.unwrap();
         let release = Release::new("owner", "repo", "v1.0.0");
-        server.add_release("owner", "repo", release).await;
+        server.add_release(release).await;
 
         let client = Client::new();
         let response = client
@@ -199,8 +199,8 @@ mod tests {
     async fn test_get_latest_release() {
         let server = MockServer::start().await.unwrap();
 
-        server.add_release("owner", "repo", Release::new("owner", "repo", "v1.0.0").created_at("2024-01-01T00:00:00Z")).await;
-        server.add_release("owner", "repo", Release::new("owner", "repo", "v1.1.0").created_at("2024-02-01T00:00:00Z")).await;
+        server.add_release(Release::new("owner", "repo", "v1.0.0").created_at("2024-01-01T00:00:00Z")).await;
+        server.add_release(Release::new("owner", "repo", "v1.1.0").created_at("2024-02-01T00:00:00Z")).await;
 
         let client = Client::new();
         let response = client
@@ -219,7 +219,7 @@ mod tests {
         let server = MockServer::start().await.unwrap();
 
         for i in 1..=35 {
-            server.add_release("owner", "repo", Release::new("owner", "repo", &format!("v{}", i))).await;
+            server.add_release(Release::new("owner", "repo", &format!("v{}", i))).await;
         }
 
         let client = reqwest::Client::new();

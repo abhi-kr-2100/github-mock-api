@@ -112,9 +112,9 @@ pub struct ReactionRollup {
 #[serde(rename_all = "snake_case")]
 pub struct Release {
     #[serde(skip)]
-    pub owner_login: String,
+    pub owner: String,
     #[serde(skip)]
-    pub repo_name: String,
+    pub repo: String,
     pub url: String,
     pub html_url: String,
     pub assets_url: String,

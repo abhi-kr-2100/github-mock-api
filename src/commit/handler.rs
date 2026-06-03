@@ -69,7 +69,7 @@ mod tests {
         let commit = Commit::new("octocat", "hello-world")
             .message("Initial commit")
             .author_name("Mona Octocat");
-        server.add_commit("octocat", "hello-world", commit).await;
+        server.add_commit(commit).await;
 
         let client = reqwest::Client::new();
         let resp = client
@@ -91,7 +91,7 @@ mod tests {
         let commit = Commit::new("octocat", "hello-world")
             .sha("customsha")
             .message("Custom SHA commit");
-        server.add_commit("octocat", "hello-world", commit).await;
+        server.add_commit(commit).await;
 
         let client = reqwest::Client::new();
         let resp = client
@@ -127,8 +127,8 @@ mod tests {
         let server = MockServer::start().await?;
         let c1 = Commit::new("octocat", "hello-world").message("First");
         let c2 = Commit::new("octocat", "hello-world").message("Second");
-        server.add_commit("octocat", "hello-world", c1).await;
-        server.add_commit("octocat", "hello-world", c2).await;
+        server.add_commit(c1).await;
+        server.add_commit(c2).await;
 
         let client = reqwest::Client::new();
         let resp = client
@@ -148,7 +148,7 @@ mod tests {
         let commit = Commit::new("octocat", "hello-world")
             .sha("abc123")
             .message("Case test");
-        server.add_commit("octocat", "hello-world", commit).await;
+        server.add_commit(commit).await;
 
         let client = reqwest::Client::new();
         let resp = client
@@ -167,8 +167,8 @@ mod tests {
         let server = MockServer::start().await?;
         let c1 = Commit::new("u", "r").message("First");
         let c2 = Commit::new("u", "r").message("Second");
-        server.add_commit("u", "r", c1).await;
-        server.add_commit("u", "r", c2).await;
+        server.add_commit(c1).await;
+        server.add_commit(c2).await;
 
         let client = reqwest::Client::new();
         let resp = client
@@ -185,8 +185,8 @@ mod tests {
     #[tokio::test]
     async fn test_commits_scoped_to_repo() -> TestResult {
         let server = MockServer::start().await?;
-        server.add_commit("owner1", "repo1", Commit::new("owner1", "repo1").message("Repo1 commit")).await;
-        server.add_commit("owner2", "repo2", Commit::new("owner2", "repo2").message("Repo2 commit")).await;
+        server.add_commit(Commit::new("owner1", "repo1").message("Repo1 commit")).await;
+        server.add_commit(Commit::new("owner2", "repo2").message("Repo2 commit")).await;
 
         let client = reqwest::Client::new();
         let resp = client
@@ -205,7 +205,7 @@ mod tests {
     async fn test_list_commits_pagination() -> TestResult {
         let server = MockServer::start().await?;
         for i in 1..=35 {
-            server.add_commit("u", "r", Commit::new("u", "r").message(&format!("Commit {}", i))).await;
+            server.add_commit(Commit::new("u", "r").message(&format!("Commit {}", i))).await;
         }
 
         let client = reqwest::Client::new();
@@ -232,7 +232,7 @@ mod tests {
     #[tokio::test]
     async fn test_get_commit_not_found_in_existing_repo() -> TestResult {
         let server = MockServer::start().await?;
-        server.add_commit("u", "r", Commit::new("u", "r").sha("sha1")).await;
+        server.add_commit(Commit::new("u", "r").sha("sha1")).await;
 
         let client = reqwest::Client::new();
         let resp = client
