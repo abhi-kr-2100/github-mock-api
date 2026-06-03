@@ -80,7 +80,7 @@ mod tests {
         assert_eq!(resp.status(), 200);
         let body: serde_json::Value = resp.json().await?;
         assert!(body.is_array());
-        assert_eq!(body.as_array().unwrap().len(), 1);
+        assert_eq!(body.as_array().map(|a| a.len()), Some(1));
         assert_eq!(body[0]["commit"]["message"], "Initial commit");
         Ok(())
     }
@@ -138,7 +138,7 @@ mod tests {
 
         assert_eq!(resp.status(), 200);
         let body: serde_json::Value = resp.json().await?;
-        assert_eq!(body.as_array().unwrap().len(), 2);
+        assert_eq!(body.as_array().map(|a| a.len()), Some(2));
         Ok(())
     }
 
@@ -178,15 +178,27 @@ mod tests {
 
         assert_eq!(resp.status(), 200);
         let body: serde_json::Value = resp.json().await?;
-        assert_eq!(body.as_array().unwrap().len(), 2);
+        assert_eq!(body.as_array().map(|a| a.len()), Some(2));
         Ok(())
     }
 
     #[tokio::test]
     async fn test_commits_scoped_to_repo() -> TestResult {
         let server = MockServer::start().await?;
-        server.add_commit("owner1", "repo1", Commit::new("owner1", "repo1").message("Repo1 commit")).await;
-        server.add_commit("owner2", "repo2", Commit::new("owner2", "repo2").message("Repo2 commit")).await;
+        server
+            .add_commit(
+                "owner1",
+                "repo1",
+                Commit::new("owner1", "repo1").message("Repo1 commit"),
+            )
+            .await;
+        server
+            .add_commit(
+                "owner2",
+                "repo2",
+                Commit::new("owner2", "repo2").message("Repo2 commit"),
+            )
+            .await;
 
         let client = reqwest::Client::new();
         let resp = client
@@ -196,7 +208,7 @@ mod tests {
 
         assert_eq!(resp.status(), 200);
         let body: serde_json::Value = resp.json().await?;
-        assert_eq!(body.as_array().unwrap().len(), 1);
+        assert_eq!(body.as_array().map(|a| a.len()), Some(1));
         assert_eq!(body[0]["commit"]["message"], "Repo1 commit");
         Ok(())
     }
@@ -205,7 +217,13 @@ mod tests {
     async fn test_list_commits_pagination() -> TestResult {
         let server = MockServer::start().await?;
         for i in 1..=35 {
-            server.add_commit("u", "r", Commit::new("u", "r").message(&format!("Commit {}", i))).await;
+            server
+                .add_commit(
+                    "u",
+                    "r",
+                    Commit::new("u", "r").message(&format!("Commit {}", i)),
+                )
+                .await;
         }
 
         let client = reqwest::Client::new();
@@ -225,6 +243,49 @@ mod tests {
             .await?;
         let body: Vec<serde_json::Value> = resp.json().await?;
         assert_eq!(body.len(), 5);
+
+        // Custom per_page
+        let resp = client
+            .get(format!(
+                "{}/repos/u/r/commits?per_page=10",
+                server.uri()
+            ))
+            .send()
+            .await?;
+        let body: Vec<serde_json::Value> = resp.json().await?;
+        assert_eq!(body.len(), 10);
+
+        // per_page capping
+        let resp = client
+            .get(format!(
+                "{}/repos/u/r/commits?per_page=200",
+                server.uri()
+            ))
+            .send()
+            .await?;
+        let body: Vec<serde_json::Value> = resp.json().await?;
+        // We only have 35 commits total, so it should return 35 even if capped at 100
+        assert_eq!(body.len(), 35);
+
+        // Add more commits to test 100 cap
+        for i in 36..=110 {
+            server
+                .add_commit(
+                    "u",
+                    "r",
+                    Commit::new("u", "r").message(&format!("Commit {}", i)),
+                )
+                .await;
+        }
+        let resp = client
+            .get(format!(
+                "{}/repos/u/r/commits?per_page=200",
+                server.uri()
+            ))
+            .send()
+            .await?;
+        let body: Vec<serde_json::Value> = resp.json().await?;
+        assert_eq!(body.len(), 100);
 
         Ok(())
     }

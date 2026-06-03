@@ -8,28 +8,23 @@ pub(crate) fn hash(input: &str) -> u64 {
     hasher.finish()
 }
 
+pub const DEFAULT_PAGE: usize = 1;
+pub const DEFAULT_PER_PAGE: usize = 30;
+pub const MAX_PER_PAGE: usize = 100;
+
 #[derive(Debug, Deserialize, Clone, Copy)]
 pub struct Pagination {
     pub page: Option<usize>,
     pub per_page: Option<usize>,
 }
 
-impl Default for Pagination {
-    fn default() -> Self {
-        Self {
-            page: Some(1),
-            per_page: Some(30),
-        }
-    }
-}
-
 impl Pagination {
     pub fn page(&self) -> usize {
-        self.page.unwrap_or(1).max(1)
+        self.page.unwrap_or(DEFAULT_PAGE).max(1)
     }
 
     pub fn per_page(&self) -> usize {
-        self.per_page.unwrap_or(30).clamp(1, 100)
+        self.per_page.unwrap_or(DEFAULT_PER_PAGE).clamp(1, MAX_PER_PAGE)
     }
 }
 
@@ -52,29 +47,37 @@ mod tests {
 
     #[test]
     fn test_pagination_defaults() {
-        let p = Pagination { page: None, per_page: None };
-        assert_eq!(p.page(), 1);
-        assert_eq!(p.per_page(), 30);
-
-        let d = Pagination::default();
-        assert_eq!(d.page(), 1);
-        assert_eq!(d.per_page(), 30);
+        let p = Pagination {
+            page: None,
+            per_page: None,
+        };
+        assert_eq!(p.page(), DEFAULT_PAGE);
+        assert_eq!(p.per_page(), DEFAULT_PER_PAGE);
     }
 
     #[test]
     fn test_pagination_custom() {
-        let p = Pagination { page: Some(2), per_page: Some(50) };
+        let p = Pagination {
+            page: Some(2),
+            per_page: Some(50),
+        };
         assert_eq!(p.page(), 2);
         assert_eq!(p.per_page(), 50);
     }
 
     #[test]
     fn test_pagination_limits() {
-        let p = Pagination { page: Some(0), per_page: Some(200) };
+        let p = Pagination {
+            page: Some(0),
+            per_page: Some(200),
+        };
         assert_eq!(p.page(), 1);
-        assert_eq!(p.per_page(), 100);
+        assert_eq!(p.per_page(), MAX_PER_PAGE);
 
-        let p2 = Pagination { page: Some(1), per_page: Some(0) };
+        let p2 = Pagination {
+            page: Some(1),
+            per_page: Some(0),
+        };
         assert_eq!(p2.per_page(), 1);
     }
 

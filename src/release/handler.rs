@@ -111,8 +111,8 @@ mod tests {
     use reqwest::Client;
 
     #[tokio::test]
-    async fn test_list_releases_returns_releases() {
-        let server = MockServer::start().await.unwrap();
+    async fn test_list_releases_returns_releases() -> Result<(), Box<dyn std::error::Error>> {
+        let server = MockServer::start().await?;
 
         let release = Release::new("owner", "repo", "v1.0.0");
         server.add_release("owner", "repo", release).await;
@@ -121,18 +121,18 @@ mod tests {
         let response = client
             .get(server.uri() + "/repos/owner/repo/releases")
             .send()
-            .await
-            .unwrap();
+            .await?;
 
         assert_eq!(response.status(), StatusCode::OK);
-        let releases: Vec<Release> = response.json().await.unwrap();
+        let releases: Vec<Release> = response.json().await?;
         assert_eq!(releases.len(), 1);
         assert_eq!(releases[0].tag_name, "v1.0.0");
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_get_release_by_id() {
-        let server = MockServer::start().await.unwrap();
+    async fn test_get_release_by_id() -> Result<(), Box<dyn std::error::Error>> {
+        let server = MockServer::start().await?;
         let release = Release::new("owner", "repo", "v1.0.0");
         let id = release.id;
         server.add_release("owner", "repo", release).await;
@@ -141,17 +141,17 @@ mod tests {
         let response = client
             .get(server.uri() + &format!("/repos/owner/repo/releases/{}", id))
             .send()
-            .await
-            .unwrap();
+            .await?;
 
         assert_eq!(response.status(), StatusCode::OK);
-        let release: Release = response.json().await.unwrap();
+        let release: Release = response.json().await?;
         assert_eq!(release.id, id);
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_get_release_by_tag() {
-        let server = MockServer::start().await.unwrap();
+    async fn test_get_release_by_tag() -> Result<(), Box<dyn std::error::Error>> {
+        let server = MockServer::start().await?;
         let release = Release::new("owner", "repo", "v1.0.0");
         server.add_release("owner", "repo", release).await;
 
@@ -159,67 +159,88 @@ mod tests {
         let response = client
             .get(server.uri() + "/repos/owner/repo/releases/tags/v1.0.0")
             .send()
-            .await
-            .unwrap();
+            .await?;
 
         assert_eq!(response.status(), StatusCode::OK);
-        let release: Release = response.json().await.unwrap();
+        let release: Release = response.json().await?;
         assert_eq!(release.tag_name, "v1.0.0");
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_get_release_not_found() {
-        let server = MockServer::start().await.unwrap();
+    async fn test_get_release_not_found() -> Result<(), Box<dyn std::error::Error>> {
+        let server = MockServer::start().await?;
         let client = Client::new();
         let response = client
             .get(server.uri() + "/repos/owner/repo/releases/123")
             .send()
-            .await
-            .unwrap();
+            .await?;
 
         assert_eq!(response.status(), StatusCode::NOT_FOUND);
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_list_releases_empty() {
-        let server = MockServer::start().await.unwrap();
+    async fn test_list_releases_empty() -> Result<(), Box<dyn std::error::Error>> {
+        let server = MockServer::start().await?;
         let client = Client::new();
         let response = client
             .get(server.uri() + "/repos/owner/repo/releases")
             .send()
-            .await
-            .unwrap();
+            .await?;
 
         assert_eq!(response.status(), StatusCode::OK);
-        let releases: Vec<Release> = response.json().await.unwrap();
+        let releases: Vec<Release> = response.json().await?;
         assert!(releases.is_empty());
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_get_latest_release() {
-        let server = MockServer::start().await.unwrap();
+    async fn test_get_latest_release() -> Result<(), Box<dyn std::error::Error>> {
+        let server = MockServer::start().await?;
 
-        server.add_release("owner", "repo", Release::new("owner", "repo", "v1.0.0").created_at("2024-01-01T00:00:00Z")).await;
-        server.add_release("owner", "repo", Release::new("owner", "repo", "v1.1.0").created_at("2024-02-01T00:00:00Z")).await;
+        server
+            .add_release(
+                "owner",
+                "repo",
+                Release::new("owner", "repo", "v1.0.0").created_at("2024-01-01T00:00:00Z"),
+            )
+            .await;
+        server
+            .add_release(
+                "owner",
+                "repo",
+                Release::new("owner", "repo", "v1.1.0").created_at("2024-02-01T00:00:00Z"),
+            )
+            .await;
 
         let client = Client::new();
         let response = client
             .get(server.uri() + "/repos/owner/repo/releases/latest")
             .send()
-            .await
-            .unwrap();
+            .await?;
 
         assert_eq!(response.status(), StatusCode::OK);
-        let release: Release = response.json().await.unwrap();
+        let release: Release = response.json().await?;
         assert_eq!(release.tag_name, "v1.1.0");
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_list_releases_pagination() {
-        let server = MockServer::start().await.unwrap();
+    async fn test_list_releases_pagination() -> crate::Result<()> {
+        let server = MockServer::start().await?;
 
         for i in 1..=35 {
-            server.add_release("owner", "repo", Release::new("owner", "repo", &format!("v{}", i))).await;
+            server
+                .add_release(
+                    "owner",
+                    "repo",
+                    Release::new("owner", "repo", &format!("v{:02}", i)).created_at(format!(
+                        "2024-01-{:02}T00:00:00Z",
+                        i
+                    )),
+                )
+                .await;
         }
 
         let client = reqwest::Client::new();
@@ -229,17 +250,31 @@ mod tests {
             .get(server.uri() + "/repos/owner/repo/releases")
             .send()
             .await
-            .unwrap();
-        let body: Vec<serde_json::Value> = resp.json().await.unwrap();
+            .map_err(|e| crate::Error::Io(std::io::Error::new(std::io::ErrorKind::Other, e)))?;
+        let body: Vec<serde_json::Value> = resp
+            .json()
+            .await
+            .map_err(|e| crate::Error::Io(std::io::Error::new(std::io::ErrorKind::Other, e)))?;
         assert_eq!(body.len(), 30);
+
+        // Verify descending order by created_at (v35 should be first)
+        assert_eq!(body[0]["tag_name"], "v35");
+        assert_eq!(body[29]["tag_name"], "v06");
 
         // Page 2 (Remaining 5 items)
         let resp = client
             .get(server.uri() + "/repos/owner/repo/releases?page=2")
             .send()
             .await
-            .unwrap();
-        let body: Vec<serde_json::Value> = resp.json().await.unwrap();
+            .map_err(|e| crate::Error::Io(std::io::Error::new(std::io::ErrorKind::Other, e)))?;
+        let body: Vec<serde_json::Value> = resp
+            .json()
+            .await
+            .map_err(|e| crate::Error::Io(std::io::Error::new(std::io::ErrorKind::Other, e)))?;
         assert_eq!(body.len(), 5);
+        assert_eq!(body[0]["tag_name"], "v05");
+        assert_eq!(body[4]["tag_name"], "v01");
+
+        Ok(())
     }
 }
