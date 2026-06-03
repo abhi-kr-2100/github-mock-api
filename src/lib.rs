@@ -31,6 +31,7 @@ mod util;
 pub use release::Release;
 pub use commit::Commit;
 pub use repository::Repository;
+pub use util::LoadError;
 
 pub(crate) type RepoKey = (String, String);
 
