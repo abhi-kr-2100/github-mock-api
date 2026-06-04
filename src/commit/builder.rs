@@ -102,7 +102,7 @@ impl Commit {
     }
 
     pub fn additions(mut self, additions: u64) -> Self {
-        let stats = self.stats.get_or_insert(CommitStats {
+        let stats = self.stats.get_or_insert_with(|| CommitStats {
             additions: 0,
             deletions: 0,
             total: 0,
@@ -113,7 +113,7 @@ impl Commit {
     }
 
     pub fn deletions(mut self, deletions: u64) -> Self {
-        let stats = self.stats.get_or_insert(CommitStats {
+        let stats = self.stats.get_or_insert_with(|| CommitStats {
             additions: 0,
             deletions: 0,
             total: 0,
