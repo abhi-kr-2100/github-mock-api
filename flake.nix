@@ -18,6 +18,7 @@
           catch2
           check
           clang
+          clippy
           dart
           jna
           kotlin
