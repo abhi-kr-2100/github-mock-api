@@ -38,7 +38,7 @@ pub fn paginate<T: Clone>(items: &[T], pagination: Pagination) -> Vec<T> {
     }
 
     let end = (start + per_page).min(items.len());
-    items[start..end].to_vec()
+    items.get(start..end).map(|s| s.to_vec()).unwrap_or_default()
 }
 
 #[cfg(test)]
