@@ -64,7 +64,7 @@ mod ffi {
         /// Write the server base URI (for example `http://127.0.0.1:3000`) into `write`.
         pub fn uri(&self, write: &mut DiplomatWrite) {
             let _ = write.write_str(&self.server.uri());
-            write.flush();
+            let _ = write.flush();
         }
 
         /// Stop the server and wait for background tasks to finish.

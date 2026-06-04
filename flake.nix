@@ -18,7 +18,6 @@
           catch2
           check
           clang
-          clippy
           dart
           jna
           kotlin
@@ -30,7 +29,6 @@
           ruby
           (ruby.withPackages (ps: with ps; [ rspec ]))
           rustc
-          skills
         ];
 
         shellHook = ''
