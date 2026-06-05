@@ -7,6 +7,14 @@ name = "github-mock-api"
 version = "0.1.0"
 edition = "2024"
 
+[lints]
+workspace = true
+
+[workspace.lints.clippy]
+panic = "deny"
+expect_used = "deny"
+unwrap_used = "deny"
+
 [dependencies]
 clap = { version = "4", features = ["derive"] }
 axum = "0.8"
