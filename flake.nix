@@ -20,6 +20,7 @@
           clang
           clippy
           dart
+          go-task
           jna
           kotlin
           libclang
@@ -30,6 +31,7 @@
           ruby
           (ruby.withPackages (ps: with ps; [ rspec ]))
           rustc
+          rustfmt
           skills
         ];
 

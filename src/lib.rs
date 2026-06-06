@@ -2,11 +2,11 @@ use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::sync::Arc;
 
-use axum::extract::{Path, Query, State, Request};
+use axum::Router;
+use axum::extract::{Path, Query, Request, State};
 use axum::http::HeaderValue;
 use axum::response::IntoResponse;
 use axum::routing::get;
-use axum::Router;
 use tokio::sync::RwLock;
 use tokio::sync::mpsc;
 
@@ -29,14 +29,14 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 mod api;
 mod behavior;
-mod release;
 mod commit;
+mod release;
 mod repository;
 mod util;
 
 pub use behavior::{MockBehavior, MockError};
-pub use release::Release;
 pub use commit::Commit;
+pub use release::Release;
 pub use repository::Repository;
 pub use util::LoadError;
 
@@ -151,7 +151,9 @@ async fn handle_paginated_response(
         .get::<crate::util::PaginationMetadata>()
         .cloned();
 
-    if let Some(metadata) = metadata && let Some(next_page) = metadata.next_page {
+    if let Some(metadata) = metadata
+        && let Some(next_page) = metadata.next_page
+    {
         let uri = request.uri();
         let host = request
             .headers()
@@ -169,8 +171,7 @@ async fn handle_paginated_response(
         query_params.push(("per_page".to_string(), metadata.per_page.to_string()));
 
         let new_query = serde_urlencoded::to_string(&query_params).unwrap_or_default();
-        let next_url = format!("http://{}{}/?{}", host, uri.path(), new_query)
-            .replace("/?","?");
+        let next_url = format!("http://{}{}/?{}", host, uri.path(), new_query).replace("/?", "?");
 
         let link_value = format!("<{}>; rel=\"next\"", next_url);
         if let Ok(header_value) = HeaderValue::from_str(&link_value) {
@@ -193,8 +194,7 @@ impl MockServer {
     /// Start a new mock server on the specified host and port.
     /// Use port 0 for a randomly available port.
     pub async fn start_on(host: IpAddr, port: u16) -> Result<Self> {
-        let listener = tokio::net::TcpListener::bind((host, port))
-            .await?;
+        let listener = tokio::net::TcpListener::bind((host, port)).await?;
 
         let address = listener.local_addr()?;
 
@@ -257,11 +257,9 @@ impl MockServer {
             )
             .route(
                 "/repos/{owner}/{repo}/commits/{sha}",
-                get(
-                    |Path((owner, repo, sha)), State(state): State<AppState>| {
-                        commit::get_commit(owner, repo, sha, state)
-                    },
-                ),
+                get(|Path((owner, repo, sha)), State(state): State<AppState>| {
+                    commit::get_commit(owner, repo, sha, state)
+                }),
             )
             .layer(axum::middleware::from_fn_with_state(
                 state.clone(),
@@ -471,5 +469,4 @@ mod tests {
         assert!(result.is_ok());
         Ok(())
     }
-
 }
