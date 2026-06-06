@@ -9,12 +9,7 @@ pub async fn download_release_asset(
     filename: String,
     state: AppState,
 ) -> ApiResponse<()> {
-    let key = (
-        owner.to_lowercase(),
-        repo.to_lowercase(),
-        tag.to_lowercase(),
-        filename.to_lowercase(),
-    );
+    let key = (owner.to_lowercase(), repo.to_lowercase(), tag, filename);
     let (content, content_type, filename) = {
         let assets_map = state.assets.read().await;
         let asset = match assets_map.get(&key) {
@@ -166,6 +161,44 @@ mod tests {
             .await
             .map_err(|e| crate::Error::Io(std::io::Error::other(e)))?;
         assert!(body["message"].as_str().unwrap().contains("Invalid content type"));
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_download_asset_case_sensitivity() -> crate::Result<()> {
+        let server = MockServer::start().await?;
+        let content = b"content".to_vec();
+        let asset = Asset::from_bytes("MyAsset.zip", content.clone(), "application/zip");
+
+        // Registered with specific casing
+        server.add_asset("Owner", "Repo", "v1.0.0-BETA", asset).await;
+
+        let client = Client::new();
+
+        // 1. Success with correct casing for tag and filename, different casing for owner/repo
+        let resp = client
+            .get(server.uri() + "/owner/repo/releases/download/v1.0.0-BETA/MyAsset.zip")
+            .send()
+            .await
+            .map_err(|e| crate::Error::Io(std::io::Error::other(e)))?;
+        assert_eq!(resp.status(), StatusCode::OK);
+
+        // 2. Failure with wrong casing for tag
+        let resp = client
+            .get(server.uri() + "/owner/repo/releases/download/v1.0.0-beta/MyAsset.zip")
+            .send()
+            .await
+            .map_err(|e| crate::Error::Io(std::io::Error::other(e)))?;
+        assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+
+        // 3. Failure with wrong casing for filename
+        let resp = client
+            .get(server.uri() + "/owner/repo/releases/download/v1.0.0-BETA/myasset.zip")
+            .send()
+            .await
+            .map_err(|e| crate::Error::Io(std::io::Error::other(e)))?;
+        assert_eq!(resp.status(), StatusCode::NOT_FOUND);
 
         Ok(())
     }

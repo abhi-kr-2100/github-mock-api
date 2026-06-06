@@ -96,8 +96,8 @@ impl AppState {
         let key = (
             owner.to_lowercase(),
             repo.to_lowercase(),
-            tag.to_lowercase(),
-            asset.name.to_lowercase(),
+            tag.to_string(),
+            asset.name.clone(),
         );
         let mut assets = self.assets.write().await;
         assets.insert(key, asset);
