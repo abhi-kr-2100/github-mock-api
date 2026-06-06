@@ -4,9 +4,10 @@ use crate::common::{TestError, build_cdylib, mock_api_lib_path, preload_env_vars
 
 fn which_dart() -> Option<String> {
     if let Ok(output) = Command::new("dart").arg("--version").output()
-        && output.status.success() {
-            return Some("dart".to_string());
-        }
+        && output.status.success()
+    {
+        return Some("dart".to_string());
+    }
     None
 }
 

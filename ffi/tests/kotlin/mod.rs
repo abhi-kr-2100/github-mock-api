@@ -8,9 +8,10 @@ use crate::common::{
 fn which_kotlinc() -> Option<String> {
     for candidate in ["kotlinc"] {
         if let Ok(output) = Command::new(candidate).arg("-version").output()
-            && output.status.success() {
-                return Some(candidate.to_string());
-            }
+            && output.status.success()
+        {
+            return Some(candidate.to_string());
+        }
     }
     None
 }

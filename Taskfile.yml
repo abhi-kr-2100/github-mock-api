@@ -1,7 +1,9 @@
+# yaml-language-server: $schema=https://taskfile.dev/schema.json
+
 version: '3'
 
 vars:
-  CARGO_FLAGS: --workspace --all-targets
+  CARGO_FLAGS: --workspace --all-targets --quiet
 
 tasks:
   fmt:
@@ -22,7 +24,7 @@ tasks:
   test:
     desc: Run tests for all crates
     cmds:
-      - cargo test {{.CARGO_FLAGS}}
+      - cargo test {{.CARGO_FLAGS}} -- --nocapture
 
   verify:
     desc: Format, lint autofix, lint, then test all crates

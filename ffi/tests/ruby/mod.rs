@@ -5,9 +5,10 @@ use crate::common::{TestError, lib_path_env_var, profile_dir, target_dir, worksp
 
 fn which_rspec() -> Option<String> {
     if let Ok(output) = Command::new("rspec").arg("--version").output()
-        && output.status.success() {
-            return Some("rspec".to_string());
-        }
+        && output.status.success()
+    {
+        return Some("rspec".to_string());
+    }
     None
 }
 

@@ -7,9 +7,10 @@ use crate::common::{TestError, build_cdylib, lib_dirs, lib_name, target_dir, wor
 fn which_cc() -> Option<String> {
     for candidate in ["cc"] {
         if let Ok(output) = Command::new(candidate).arg("--version").output()
-            && output.status.success() {
-                return Some(candidate.to_string());
-            }
+            && output.status.success()
+        {
+            return Some(candidate.to_string());
+        }
     }
     None
 }
