@@ -28,15 +28,17 @@ pub enum Error {
 pub type Result<T> = std::result::Result<T, Error>;
 
 mod api;
+mod asset;
 mod behavior;
 mod commit;
 mod release;
 mod repository;
 mod util;
 
+pub use asset::Asset;
 pub use behavior::{MockBehavior, MockError};
 pub use commit::Commit;
-pub use release::{Asset, Release};
+pub use release::Release;
 pub use repository::Repository;
 pub use util::LoadError;
 
@@ -241,7 +243,7 @@ impl MockServer {
                 "/{owner}/{repo}/releases/download/{tag}/{filename}",
                 get(
                     |Path((owner, repo, tag, filename)), State(state): State<AppState>| async move {
-                        release::download_release_asset(owner, repo, tag, filename, state).await
+                        asset::download_release_asset(owner, repo, tag, filename, state).await
                     },
                 ),
             )

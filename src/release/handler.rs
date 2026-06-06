@@ -1,6 +1,6 @@
 use crate::AppState;
 use crate::api::{ApiError, ApiResponse};
-use crate::release::types::{AssetContent, Release};
+use crate::release::types::Release;
 use crate::util::Pagination;
 
 pub async fn list_releases(
@@ -49,51 +49,6 @@ pub async fn get_release(
             "Not Found",
             "https://docs.github.com/rest/releases/releases#get-a-release",
         )),
-    }
-}
-
-pub async fn download_release_asset(
-    owner: String,
-    repo: String,
-    tag: String,
-    filename: String,
-    state: AppState,
-) -> ApiResponse<()> {
-    let key = (
-        owner.to_lowercase(),
-        repo.to_lowercase(),
-        tag.to_lowercase(),
-        filename.to_lowercase(),
-    );
-    let assets_map = state.assets.read().await;
-
-    let asset = match assets_map.get(&key) {
-        Some(a) => a,
-        None => {
-            return ApiResponse::Error(ApiError::not_found(
-                "Not Found",
-                "https://docs.github.com/rest/releases/releases#get-a-release-asset",
-            ));
-        }
-    };
-
-    let content = match &asset.content {
-        AssetContent::Bytes(bytes) => bytes.clone(),
-        AssetContent::File(path) => match std::fs::read(path) {
-            Ok(bytes) => bytes,
-            Err(e) => {
-                return ApiResponse::Error(ApiError {
-                    status: 500,
-                    message: format!("Failed to read asset file: {}", e),
-                    documentation_url: "https://docs.github.com/rest".to_string(),
-                });
-            }
-        },
-    };
-
-    ApiResponse::Raw {
-        bytes: content,
-        content_type: asset.content_type.clone(),
     }
 }
 
@@ -162,7 +117,6 @@ pub async fn get_latest_release(
 mod tests {
     use super::*;
     use crate::MockServer;
-    use crate::release::types::Asset;
     use axum::http::StatusCode;
     use reqwest::Client;
 
@@ -430,72 +384,4 @@ mod tests {
         Ok(())
     }
 
-    #[tokio::test]
-    async fn test_download_asset_bytes() -> crate::Result<()> {
-        let server = MockServer::start().await?;
-        let content = b"hello world".to_vec();
-        let asset = Asset::from_bytes("test.txt", content.clone(), "text/plain");
-
-        server.add_asset("owner", "repo", "v1.0.0", asset).await;
-
-        let client = reqwest::Client::new();
-        let resp = client
-            .get(server.uri() + "/owner/repo/releases/download/v1.0.0/test.txt")
-            .send()
-            .await
-            .map_err(|e| crate::Error::Io(std::io::Error::other(e)))?;
-
-        assert_eq!(resp.status(), StatusCode::OK);
-        assert_eq!(resp.headers()["content-type"], "text/plain");
-        let body = resp
-            .bytes()
-            .await
-            .map_err(|e| crate::Error::Io(std::io::Error::other(e)))?;
-        assert_eq!(body.to_vec(), content);
-
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_download_asset_file() -> crate::Result<()> {
-        let server = MockServer::start().await?;
-        let temp_dir = tempfile::tempdir().map_err(crate::Error::Io)?;
-        let file_path = temp_dir.path().join("test.bin");
-        let content = vec![1, 2, 3, 4];
-        std::fs::write(&file_path, &content).map_err(crate::Error::Io)?;
-
-        let asset = Asset::from_path("test.bin", file_path, "application/octet-stream");
-        server.add_asset("owner", "repo", "v1.0.0", asset).await;
-
-        let client = reqwest::Client::new();
-        let resp = client
-            .get(server.uri() + "/owner/repo/releases/download/v1.0.0/test.bin")
-            .send()
-            .await
-            .map_err(|e| crate::Error::Io(std::io::Error::other(e)))?;
-
-        assert_eq!(resp.status(), StatusCode::OK);
-        assert_eq!(resp.headers()["content-type"], "application/octet-stream");
-        let body = resp
-            .bytes()
-            .await
-            .map_err(|e| crate::Error::Io(std::io::Error::other(e)))?;
-        assert_eq!(body.to_vec(), content);
-
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_download_asset_not_found() -> crate::Result<()> {
-        let server = MockServer::start().await?;
-        let client = reqwest::Client::new();
-        let resp = client
-            .get(server.uri() + "/owner/repo/releases/download/v1.0.0/missing.txt")
-            .send()
-            .await
-            .map_err(|e| crate::Error::Io(std::io::Error::other(e)))?;
-
-        assert_eq!(resp.status(), StatusCode::NOT_FOUND);
-        Ok(())
-    }
 }
