@@ -1,3 +1,4 @@
+#![cfg(test)]
 use std::process::Command;
 
 use crate::common::{build_cdylib, mock_api_lib_path, preload_env_vars, workspace_root, TestError};

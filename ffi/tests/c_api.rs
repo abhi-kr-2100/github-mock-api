@@ -1,3 +1,4 @@
+#![cfg(test)]
 mod common;
 mod c;
 mod cpp;
