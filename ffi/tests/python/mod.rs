@@ -6,18 +6,20 @@ use crate::common::{TestError, lib_path_env_var, profile_dir, target_dir, worksp
 fn which_python() -> Option<String> {
     for candidate in ["python3", "python"] {
         if let Ok(output) = Command::new(candidate).arg("--version").output()
-            && output.status.success() {
-                return Some(candidate.to_string());
-            }
+            && output.status.success()
+        {
+            return Some(candidate.to_string());
+        }
     }
     None
 }
 
 fn which_pytest() -> Option<String> {
     if let Ok(output) = Command::new("pytest").arg("--version").output()
-        && output.status.success() {
-            return Some("pytest".to_string());
-        }
+        && output.status.success()
+    {
+        return Some("pytest".to_string());
+    }
     None
 }
 
