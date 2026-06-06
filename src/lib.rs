@@ -36,17 +36,19 @@ mod util;
 
 pub use behavior::{MockBehavior, MockError};
 pub use commit::Commit;
-pub use release::Release;
+pub use release::{Asset, Release};
 pub use repository::Repository;
 pub use util::LoadError;
 
 pub(crate) type RepoKey = (String, String);
+pub(crate) type AssetKey = (String, String, String, String); // (owner, repo, tag, filename)
 
 #[derive(Clone, Default)]
 pub(crate) struct AppState {
     pub(crate) repositories: Arc<RwLock<HashMap<RepoKey, Repository>>>,
     pub(crate) releases: Arc<RwLock<HashMap<RepoKey, Vec<Release>>>>,
     pub(crate) commits: Arc<RwLock<HashMap<RepoKey, Vec<Commit>>>>,
+    pub(crate) assets: Arc<RwLock<HashMap<AssetKey, Asset>>>,
     pub(crate) behaviors: Arc<RwLock<Vec<MockBehavior>>>,
 }
 
@@ -86,6 +88,17 @@ impl AppState {
         );
         let mut repositories = self.repositories.write().await;
         repositories.insert(key, repository);
+    }
+
+    pub async fn add_asset(&self, owner: &str, repo: &str, tag: &str, asset: Asset) {
+        let key = (
+            owner.to_lowercase(),
+            repo.to_lowercase(),
+            tag.to_lowercase(),
+            asset.name.to_lowercase(),
+        );
+        let mut assets = self.assets.write().await;
+        assets.insert(key, asset);
     }
 }
 
@@ -202,6 +215,7 @@ impl MockServer {
             repositories: Arc::new(RwLock::new(HashMap::new())),
             releases: Arc::new(RwLock::new(HashMap::new())),
             commits: Arc::new(RwLock::new(HashMap::new())),
+            assets: Arc::new(RwLock::new(HashMap::new())),
             behaviors: Arc::new(RwLock::new(Vec::new())),
         };
         let app = Router::new()
@@ -220,6 +234,14 @@ impl MockServer {
                      request: Request| async move {
                         let response = release::list_releases(owner, repo, pagination, state).await;
                         handle_paginated_response(request, response).await
+                    },
+                ),
+            )
+            .route(
+                "/{owner}/{repo}/releases/download/{tag}/{filename}",
+                get(
+                    |Path((owner, repo, tag, filename)), State(state): State<AppState>| async move {
+                        release::download_release_asset(owner, repo, tag, filename, state).await
                     },
                 ),
             )
@@ -307,6 +329,11 @@ impl MockServer {
     /// Register a mocked repository with the server.
     pub async fn add_repository(&self, repository: Repository) {
         self.state.add_repository(repository).await;
+    }
+
+    /// Register a mocked asset with the server.
+    pub async fn add_asset(&self, owner: &str, repo: &str, tag: &str, asset: Asset) {
+        self.state.add_asset(owner, repo, tag, asset).await;
     }
 
     /// Add a mock behavior to the server.

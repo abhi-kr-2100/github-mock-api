@@ -4,5 +4,7 @@ mod builder;
 mod handler;
 mod types;
 
-pub use handler::{get_latest_release, get_release, get_release_by_tag, list_releases};
-pub use types::Release;
+pub use handler::{
+    download_release_asset, get_latest_release, get_release, get_release_by_tag, list_releases,
+};
+pub use types::{Asset, Release};
