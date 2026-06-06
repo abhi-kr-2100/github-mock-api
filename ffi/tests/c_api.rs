@@ -1,7 +1,7 @@
 #![cfg(test)]
 
-mod common;
 mod c;
+mod common;
 mod cpp;
 mod dart;
 mod kotlin;
