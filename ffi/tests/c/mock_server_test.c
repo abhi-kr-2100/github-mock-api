@@ -23,11 +23,13 @@ static char* get_data_dir() {
 
     if (last_slash) {
         size_t len = last_slash - file;
-        strncpy(path, file, len);
-        path[len] = '\0';
-        strcat(path, "/../../../testing/data");
+        if (len >= sizeof(path)) {
+            len = sizeof(path) - 1;
+        }
+        snprintf(path, sizeof(path), "%.*s/../../../testing/data", (int)len, file);
     } else {
-        strcpy(path, "testing/data");
+        strncpy(path, "testing/data", sizeof(path));
+        path[sizeof(path) - 1] = '\0';
     }
     return path;
 }
@@ -192,7 +194,8 @@ START_TEST(test_data_registration) {
     Commit_destroy(commit2);
     Asset_destroy(asset);
     MockBehavior_destroy(behavior);
-    MockServer_stop(server);
+    MockServer_stop_result stopped = MockServer_stop(server);
+    ck_assert(stopped.is_ok);
     MockServer_destroy(server);
 }
 END_TEST
@@ -206,21 +209,22 @@ START_TEST(test_load_from_file) {
     char* data_dir = get_data_dir();
 
     // Repositories
-    sprintf(path, "%s/repositories.json", data_dir);
+    snprintf(path, sizeof(path), "%s/repositories.json", data_dir);
     MockServer_add_repositories_from_file_result res1 = MockServer_add_repositories_from_file(server, DSD(path));
     ck_assert(res1.is_ok);
 
     // Releases
-    sprintf(path, "%s/releases.json", data_dir);
+    snprintf(path, sizeof(path), "%s/releases.json", data_dir);
     MockServer_add_releases_from_file_result res2 = MockServer_add_releases_from_file(server, DSD(path), DS("CleverRaven"), DS("Cataclysm-DDA"));
     ck_assert(res2.is_ok);
 
     // Commits
-    sprintf(path, "%s/commits.json", data_dir);
+    snprintf(path, sizeof(path), "%s/commits.json", data_dir);
     MockServer_add_commits_from_file_result res3 = MockServer_add_commits_from_file(server, DSD(path), DS("karpathy"), DS("arxiv-sanity-lite"));
     ck_assert(res3.is_ok);
 
-    MockServer_stop(server);
+    MockServer_stop_result stopped = MockServer_stop(server);
+    ck_assert(stopped.is_ok);
     MockServer_destroy(server);
 }
 END_TEST
