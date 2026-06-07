@@ -173,7 +173,7 @@ impl MockServer {
     }
 }
 
-#[pyclass(module = "github_mock_api")]
+#[pyclass(module = "github_mock_api", from_py_object)]
 #[derive(Clone)]
 struct Repository {
     inner: RustRepository,
@@ -225,7 +225,7 @@ impl Repository {
     }
 }
 
-#[pyclass(module = "github_mock_api")]
+#[pyclass(module = "github_mock_api", from_py_object)]
 #[derive(Clone)]
 struct Release {
     inner: RustRelease,
@@ -272,7 +272,7 @@ impl Release {
     }
 }
 
-#[pyclass(module = "github_mock_api")]
+#[pyclass(module = "github_mock_api", from_py_object)]
 #[derive(Clone)]
 struct Commit {
     inner: RustCommit,
@@ -307,7 +307,7 @@ impl Commit {
     }
 }
 
-#[pyclass(module = "github_mock_api")]
+#[pyclass(module = "github_mock_api", from_py_object)]
 #[derive(Clone)]
 struct Asset {
     inner: RustAsset,
@@ -330,14 +330,14 @@ impl Asset {
     }
 }
 
-#[pyclass(module = "github_mock_api")]
+#[pyclass(module = "github_mock_api", from_py_object)]
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum MockError {
     InternalServerError,
     RateLimitExceeded,
 }
 
-#[pyclass(module = "github_mock_api")]
+#[pyclass(module = "github_mock_api", from_py_object)]
 #[derive(Clone)]
 struct MockBehavior {
     inner: RustMockBehavior,
