@@ -113,5 +113,46 @@ void main() {
       expect(json['message'], equals('Not Found'));
       expect(json['documentation_url'], isA<String>());
     });
+
+    test('registers repository and responds with 200', () async {
+      final server = MockServer.start();
+      addTearDown(server.stop);
+      final uri = server.uri();
+
+      final repo = Repository.new_('octocat', 'hello-world');
+      server.addRepository(repo);
+
+      final client = HttpClient();
+      addTearDown(client.close);
+      final request = await client.getUrl(Uri.parse('$uri/repos/octocat/hello-world'));
+      final response = await request.close();
+      final body = await response.transform(utf8.decoder).join();
+
+      expect(response.statusCode, equals(200));
+      final json = jsonDecode(body) as Map<String, dynamic>;
+      expect(json['name'], equals('hello-world'));
+      expect(json['owner']['login'], equals('octocat'));
+    });
+
+    test('applies mock behavior and returns 500', () async {
+      final server = MockServer.start();
+      addTearDown(server.stop);
+      final uri = server.uri();
+
+      final behavior = MockBehavior.newError(MockError.internalServerError);
+      server.addMockBehavior(behavior);
+
+      final client = HttpClient();
+      addTearDown(client.close);
+      final request = await client.getUrl(Uri.parse('$uri/repos/any/repo'));
+      final response = await request.close();
+
+      expect(response.statusCode, equals(500));
+
+      server.clearAllMockBehaviors();
+      final request2 = await client.getUrl(Uri.parse('$uri/repos/any/repo'));
+      final response2 = await request2.close();
+      expect(response2.statusCode, equals(404));
+    });
   });
 }

@@ -10,6 +10,7 @@ pub enum CommonError {
     Join,
     InvalidHost,
     Conflict,
+    DataLoad,
 }
 
 impl From<MockApiError> for CommonError {
@@ -20,6 +21,12 @@ impl From<MockApiError> for CommonError {
             MockApiError::JoinError(_) => CommonError::Join,
             MockApiError::Conflict(_) => CommonError::Conflict,
         }
+    }
+}
+
+impl From<github_mock_api::LoadError> for CommonError {
+    fn from(_err: github_mock_api::LoadError) -> Self {
+        CommonError::DataLoad
     }
 }
 
