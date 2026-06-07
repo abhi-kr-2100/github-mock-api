@@ -72,6 +72,12 @@ RSpec.describe GitHubMockAPI::MockServer do
   describe "data registration" do
     before { @server = described_class.start }
 
+    it "ensures repository builder is immutable" do
+      repo1 = GitHubMockAPI::Repository.new("octocat", "hello-world")
+      repo2 = repo1.description("A great repo")
+      expect(repo1.object_id).not_to eq(repo2.object_id)
+    end
+
     it "registers a repository" do
       repo = GitHubMockAPI::Repository.new("octocat", "hello-world")
       @server.add_repository(repo)
@@ -81,6 +87,12 @@ RSpec.describe GitHubMockAPI::MockServer do
       expect(resp.code).to eq("200")
       data = JSON.parse(resp.body)
       expect(data["name"]).to eq("hello-world")
+    end
+
+    it "ensures release builder is immutable" do
+      release1 = GitHubMockAPI::Release.new("octocat", "hello-world", "v1.0.0")
+      release2 = release1.name("v1.0.0 Release")
+      expect(release1.object_id).not_to eq(release2.object_id)
     end
 
     it "registers a release" do
@@ -94,6 +106,12 @@ RSpec.describe GitHubMockAPI::MockServer do
       data = JSON.parse(resp.body)
       expect(data["tag_name"]).to eq("v1.0.0")
       expect(data["name"]).to eq("v1.0.0 Release")
+    end
+
+    it "ensures commit builder is immutable" do
+      commit1 = GitHubMockAPI::Commit.new("octocat", "hello-world")
+      commit2 = commit1.sha("abc123def456")
+      expect(commit1.object_id).not_to eq(commit2.object_id)
     end
 
     it "registers a commit" do

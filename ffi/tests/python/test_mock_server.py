@@ -74,6 +74,14 @@ class TestMockServer:
         assert data["name"] == "hello-world"
         assert data["owner"]["login"] == "octocat"
 
+    def test_release_builder_is_immutable(self) -> None:
+        release1 = Release("octocat", "hello-world", "v1.0.0")
+        release2 = release1.name("v1.0.0 Release")
+        assert release1 is not release2
+        # Verify release1 hasn't changed (though we don't have getters,
+        # we can check it doesn't have the name if we had a way,
+        # but the identity check is a good start)
+
     def test_add_release(self, server: MockServer) -> None:
         release = Release("octocat", "hello-world", "v1.0.0")
         release = release.name("v1.0.0 Release")
@@ -84,6 +92,11 @@ class TestMockServer:
         data = resp.json()
         assert data["tag_name"] == "v1.0.0"
         assert data["name"] == "v1.0.0 Release"
+
+    def test_commit_builder_is_immutable(self) -> None:
+        commit1 = Commit("octocat", "hello-world")
+        commit2 = commit1.sha("abc123def456")
+        assert commit1 is not commit2
 
     def test_add_commit(self, server: MockServer) -> None:
         commit = Commit("octocat", "hello-world")

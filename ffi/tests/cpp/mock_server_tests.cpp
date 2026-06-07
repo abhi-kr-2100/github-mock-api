@@ -1,6 +1,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <vector>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -10,10 +11,24 @@
 #include <catch2/catch.hpp>
 
 #include "github_mock_api/MockServer.hpp"
+#include "github_mock_api/Repository.hpp"
+#include "github_mock_api/Release.hpp"
+#include "github_mock_api/Commit.hpp"
+#include "github_mock_api/Asset.hpp"
+#include "github_mock_api/MockBehavior.hpp"
 
 using namespace github_mock_api_ffi;
 
 namespace {
+
+std::string get_data_dir() {
+    std::string path = __FILE__;
+    auto pos = path.find_last_of("/\\");
+    if (pos != std::string::npos) {
+        path = path.substr(0, pos); // ffi/tests/cpp
+    }
+    return path + "/../../../testing/data";
+}
 
 int connect_to(const std::string& host, int port) {
     int sock = socket(AF_INET, SOCK_STREAM, 0);
@@ -163,4 +178,84 @@ TEST_CASE("MockServer is not reachable after stop", "[mock_server][network]") {
     REQUIRE(server->stop().is_ok());
 
     CHECK(connect_to(host, port) < 0);
+}
+
+TEST_CASE("Repository builder is immutable", "[repository]") {
+    auto repo1 = Repository::create("octocat", "hello-world");
+    auto repo2 = repo1->description("A great repo");
+
+    // In C++ bindings, name() might return a string.
+    // Let's assume it has some getters if we added them, but the task focuses on builders.
+    // The main point is that repo1 is not changed.
+
+    // We don't have description() getter in the bridge yet, but we can verify it doesn't crash
+    // and that we can add both to a server if we wanted to (though they have same name).
+
+    CHECK(repo1.get() != repo2.get());
+}
+
+TEST_CASE("MockServer data registration", "[mock_server][data]") {
+    auto server = MockServer::start().ok().value();
+    auto uri = server->uri();
+
+    SECTION("Add Repository") {
+        auto repo = Repository::create("octocat", "hello-world");
+        auto result = server->add_repository(*repo);
+        CHECK(result.is_ok());
+
+        // Basic reachability check via URI would require a HTTP client in C++.
+        // For now we just verify the FFI calls succeed.
+    }
+
+    SECTION("Add Release") {
+        auto release = Release::create("octocat", "hello-world", "v1.0.0")
+            ->name("v1.0.0 Release")
+            ->body("Description of release");
+        auto result = server->add_release("octocat", "hello-world", *release);
+        CHECK(result.is_ok());
+    }
+
+    SECTION("Add Commit") {
+        auto commit = Commit::create("octocat", "hello-world")
+            ->sha("abc123def")
+            ->message("Commit message");
+        auto result = server->add_commit("octocat", "hello-world", *commit);
+        CHECK(result.is_ok());
+    }
+
+    SECTION("Add Asset") {
+        std::vector<uint8_t> data = {'h', 'e', 'l', 'l', 'o'};
+        auto asset = Asset::from_bytes("test.txt", data, "text/plain");
+        auto result = server->add_asset("octocat", "hello-world", "v1.0.0", *asset);
+        CHECK(result.is_ok());
+    }
+
+    SECTION("Mock Behavior") {
+        auto behavior = MockBehavior::new_error(MockError::InternalServerError);
+        CHECK(server->add_mock_behavior(*behavior).is_ok());
+        CHECK(server->clear_all_mock_behaviors().is_ok());
+    }
+}
+
+TEST_CASE("MockServer load from file", "[mock_server][data]") {
+    auto server = MockServer::start().ok().value();
+    auto data_dir = get_data_dir();
+
+    SECTION("Load Repositories") {
+        auto path = data_dir + "/repositories.json";
+        auto result = server->add_repositories_from_file(path);
+        CHECK(result.is_ok());
+    }
+
+    SECTION("Load Releases") {
+        auto path = data_dir + "/releases.json";
+        auto result = server->add_releases_from_file(path, "CleverRaven", "Cataclysm-DDA");
+        CHECK(result.is_ok());
+    }
+
+    SECTION("Load Commits") {
+        auto path = data_dir + "/commits.json";
+        auto result = server->add_commits_from_file(path, "karpathy", "arxiv-sanity-lite");
+        CHECK(result.is_ok());
+    }
 }

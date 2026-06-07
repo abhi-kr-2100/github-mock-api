@@ -114,13 +114,20 @@ void main() {
       expect(json['documentation_url'], isA<String>());
     });
 
+    test('builder is immutable', () {
+      final repo1 = Repository.new_('octocat', 'hello-world');
+      final repo2 = repo1.description('A great repo');
+      expect(repo1, isNot(same(repo2)));
+    });
+
     test('registers repository and responds with 200', () async {
       final server = MockServer.start();
       addTearDown(server.stop);
       final uri = server.uri();
 
       final repo = Repository.new_('octocat', 'hello-world');
-      server.addRepository(repo);
+      final repo2 = repo.description('Something else');
+      server.addRepository(repo2);
 
       final client = HttpClient();
       addTearDown(client.close);

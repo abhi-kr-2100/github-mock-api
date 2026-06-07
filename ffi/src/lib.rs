@@ -123,9 +123,9 @@ mod ffi {
         pub fn add_repositories_from_file(&mut self, path: &str) -> Result<(), MockServerError> {
             let repos = RustRepository::load_from_file(path)
                 .map_err(|e| MockServerError::from(CommonError::from(e)))?;
+            let rt = runtime()?;
             for repo in repos {
-                runtime()?
-                    .block_on(self.server.add_repository(repo));
+                rt.block_on(self.server.add_repository(repo));
             }
             Ok(())
         }
@@ -149,9 +149,9 @@ mod ffi {
         ) -> Result<(), MockServerError> {
             let releases = RustRelease::load_from_file(path, owner, repo)
                 .map_err(|e| MockServerError::from(CommonError::from(e)))?;
+            let rt = runtime()?;
             for release in releases {
-                runtime()?
-                    .block_on(self.server.add_release(owner, repo, release));
+                rt.block_on(self.server.add_release(owner, repo, release));
             }
             Ok(())
         }
@@ -175,9 +175,9 @@ mod ffi {
         ) -> Result<(), MockServerError> {
             let commits = RustCommit::load_from_file(path, owner, repo)
                 .map_err(|e| MockServerError::from(CommonError::from(e)))?;
+            let rt = runtime()?;
             for commit in commits {
-                runtime()?
-                    .block_on(self.server.add_commit(owner, repo, commit));
+                rt.block_on(self.server.add_commit(owner, repo, commit));
             }
             Ok(())
         }
@@ -217,20 +217,28 @@ mod ffi {
             })
         }
 
-        pub fn set_description(&mut self, description: &str) {
-            self.inner = self.inner.clone().description(description);
+        pub fn description(&self, description: &str) -> Box<Repository> {
+            Box::new(Repository {
+                inner: self.inner.clone().description(description),
+            })
         }
 
-        pub fn set_private(&mut self, private: bool) {
-            self.inner = self.inner.clone().private(private);
+        pub fn private(&self, private: bool) -> Box<Repository> {
+            Box::new(Repository {
+                inner: self.inner.clone().private(private),
+            })
         }
 
-        pub fn set_stargazers_count(&mut self, count: u64) {
-            self.inner = self.inner.clone().stargazers_count(count);
+        pub fn stargazers_count(&self, count: u64) -> Box<Repository> {
+            Box::new(Repository {
+                inner: self.inner.clone().stargazers_count(count),
+            })
         }
 
-        pub fn set_default_branch(&mut self, branch: &str) {
-            self.inner = self.inner.clone().default_branch(branch);
+        pub fn default_branch(&self, branch: &str) -> Box<Repository> {
+            Box::new(Repository {
+                inner: self.inner.clone().default_branch(branch),
+            })
         }
     }
 
@@ -241,24 +249,34 @@ mod ffi {
             })
         }
 
-        pub fn set_name(&mut self, name: &str) {
-            self.inner = self.inner.clone().name(name);
+        pub fn name(&self, name: &str) -> Box<Release> {
+            Box::new(Release {
+                inner: self.inner.clone().name(name),
+            })
         }
 
-        pub fn set_body(&mut self, body: &str) {
-            self.inner = self.inner.clone().body(body);
+        pub fn body(&self, body: &str) -> Box<Release> {
+            Box::new(Release {
+                inner: self.inner.clone().body(body),
+            })
         }
 
-        pub fn set_target_commitish(&mut self, commitish: &str) {
-            self.inner = self.inner.clone().target_commitish(commitish);
+        pub fn target_commitish(&self, commitish: &str) -> Box<Release> {
+            Box::new(Release {
+                inner: self.inner.clone().target_commitish(commitish),
+            })
         }
 
-        pub fn set_draft(&mut self, draft: bool) {
-            self.inner = self.inner.clone().draft(draft);
+        pub fn draft(&self, draft: bool) -> Box<Release> {
+            Box::new(Release {
+                inner: self.inner.clone().draft(draft),
+            })
         }
 
-        pub fn set_prerelease(&mut self, prerelease: bool) {
-            self.inner = self.inner.clone().prerelease(prerelease);
+        pub fn prerelease(&self, prerelease: bool) -> Box<Release> {
+            Box::new(Release {
+                inner: self.inner.clone().prerelease(prerelease),
+            })
         }
     }
 
@@ -269,20 +287,28 @@ mod ffi {
             })
         }
 
-        pub fn set_sha(&mut self, sha: &str) {
-            self.inner = self.inner.clone().sha(sha);
+        pub fn sha(&self, sha: &str) -> Box<Commit> {
+            Box::new(Commit {
+                inner: self.inner.clone().sha(sha),
+            })
         }
 
-        pub fn set_message(&mut self, message: &str) {
-            self.inner = self.inner.clone().message(message);
+        pub fn message(&self, message: &str) -> Box<Commit> {
+            Box::new(Commit {
+                inner: self.inner.clone().message(message),
+            })
         }
 
-        pub fn set_author_name(&mut self, name: &str) {
-            self.inner = self.inner.clone().author_name(name);
+        pub fn author_name(&self, name: &str) -> Box<Commit> {
+            Box::new(Commit {
+                inner: self.inner.clone().author_name(name),
+            })
         }
 
-        pub fn set_author_email(&mut self, email: &str) {
-            self.inner = self.inner.clone().author_email(email);
+        pub fn author_email(&self, email: &str) -> Box<Commit> {
+            Box::new(Commit {
+                inner: self.inner.clone().author_email(email),
+            })
         }
     }
 
