@@ -36,6 +36,10 @@ fn lock_error(ruby: &Ruby) -> Error {
     Error::new(ruby.exception_runtime_error(), "mock server lock poisoned")
 }
 
+fn server_stopped_error(ruby: &Ruby) -> Error {
+    Error::new(ruby.exception_runtime_error(), "mock server has been stopped")
+}
+
 #[wrap(class = "GitHubMockAPI::MockServer", free_immediately, size)]
 struct MockServer {
     server: Mutex<Option<RustMockServer>>,
@@ -87,12 +91,15 @@ impl MockServer {
 
     fn add_repository(ruby: &Ruby, rb_self: &Self, repository: &Repository) -> Result<(), Error> {
         let lock = rb_self.server.lock().map_err(|_| lock_error(ruby))?;
-        if let Some(ref server) = *lock {
-            runtime()
-                .map_err(|err| runtime_error(ruby, err))?
-                .block_on(server.add_repository(repository.inner.clone()));
+        match *lock {
+            Some(ref server) => {
+                runtime()
+                    .map_err(|err| runtime_error(ruby, err))?
+                    .block_on(server.add_repository(repository.inner.clone()));
+                Ok(())
+            }
+            None => Err(server_stopped_error(ruby)),
         }
-        Ok(())
     }
 
     fn add_release(
@@ -103,12 +110,15 @@ impl MockServer {
         release: &Release,
     ) -> Result<(), Error> {
         let lock = rb_self.server.lock().map_err(|_| lock_error(ruby))?;
-        if let Some(ref server) = *lock {
-            runtime()
-                .map_err(|err| runtime_error(ruby, err))?
-                .block_on(server.add_release(&owner, &repo, release.inner.clone()));
+        match *lock {
+            Some(ref server) => {
+                runtime()
+                    .map_err(|err| runtime_error(ruby, err))?
+                    .block_on(server.add_release(&owner, &repo, release.inner.clone()));
+                Ok(())
+            }
+            None => Err(server_stopped_error(ruby)),
         }
-        Ok(())
     }
 
     fn add_commit(
@@ -119,12 +129,15 @@ impl MockServer {
         commit: &Commit,
     ) -> Result<(), Error> {
         let lock = rb_self.server.lock().map_err(|_| lock_error(ruby))?;
-        if let Some(ref server) = *lock {
-            runtime()
-                .map_err(|err| runtime_error(ruby, err))?
-                .block_on(server.add_commit(&owner, &repo, commit.inner.clone()));
+        match *lock {
+            Some(ref server) => {
+                runtime()
+                    .map_err(|err| runtime_error(ruby, err))?
+                    .block_on(server.add_commit(&owner, &repo, commit.inner.clone()));
+                Ok(())
+            }
+            None => Err(server_stopped_error(ruby)),
         }
-        Ok(())
     }
 
     fn add_asset(
@@ -136,33 +149,42 @@ impl MockServer {
         asset: &Asset,
     ) -> Result<(), Error> {
         let lock = rb_self.server.lock().map_err(|_| lock_error(ruby))?;
-        if let Some(ref server) = *lock {
-            runtime()
-                .map_err(|err| runtime_error(ruby, err))?
-                .block_on(server.add_asset(&owner, &repo, &tag, asset.inner.clone()));
+        match *lock {
+            Some(ref server) => {
+                runtime()
+                    .map_err(|err| runtime_error(ruby, err))?
+                    .block_on(server.add_asset(&owner, &repo, &tag, asset.inner.clone()));
+                Ok(())
+            }
+            None => Err(server_stopped_error(ruby)),
         }
-        Ok(())
     }
 
     fn add_mock_behavior(ruby: &Ruby, rb_self: &Self, behavior: &MockBehavior) -> Result<(), Error> {
         let lock = rb_self.server.lock().map_err(|_| lock_error(ruby))?;
-        if let Some(ref server) = *lock {
-            runtime()
-                .map_err(|err| runtime_error(ruby, err))?
-                .block_on(server.add_mock_behavior(behavior.inner.clone()))
-                .map_err(|err| mock_api_error(ruby, err))?;
+        match *lock {
+            Some(ref server) => {
+                runtime()
+                    .map_err(|err| runtime_error(ruby, err))?
+                    .block_on(server.add_mock_behavior(behavior.inner.clone()))
+                    .map_err(|err| mock_api_error(ruby, err))?;
+                Ok(())
+            }
+            None => Err(server_stopped_error(ruby)),
         }
-        Ok(())
     }
 
     fn clear_all_mock_behaviors(ruby: &Ruby, rb_self: &Self) -> Result<(), Error> {
         let lock = rb_self.server.lock().map_err(|_| lock_error(ruby))?;
-        if let Some(ref server) = *lock {
-            runtime()
-                .map_err(|err| runtime_error(ruby, err))?
-                .block_on(server.clear_all_mock_behaviors());
+        match *lock {
+            Some(ref server) => {
+                runtime()
+                    .map_err(|err| runtime_error(ruby, err))?
+                    .block_on(server.clear_all_mock_behaviors());
+                Ok(())
+            }
+            None => Err(server_stopped_error(ruby)),
         }
-        Ok(())
     }
 }
 
@@ -294,11 +316,13 @@ struct MockBehavior {
 }
 
 impl MockBehavior {
-    fn error(ruby: &Ruby, error: i32) -> Result<Self, Error> {
-        let rust_error = match error {
-            0 => RustMockError::InternalServerError,
-            1 => RustMockError::RateLimitExceeded,
-            _ => return Err(Error::new(ruby.exception_arg_error(), "invalid error code")),
+    fn error(ruby: &Ruby, error: magnus::Symbol) -> Result<Self, Error> {
+        let rust_error = if error == ruby.to_symbol("internal_server_error") {
+            RustMockError::InternalServerError
+        } else if error == ruby.to_symbol("rate_limit_exceeded") {
+            RustMockError::RateLimitExceeded
+        } else {
+            return Err(Error::new(ruby.exception_arg_error(), "invalid error symbol. Expected :internal_server_error or :rate_limit_exceeded"));
         };
         Ok(Self {
             inner: RustMockBehavior::builder().error(rust_error).build(),
@@ -313,7 +337,7 @@ fn load_repos(ruby: &Ruby, path: String) -> Result<magnus::Value, Error> {
     for r in repos {
         ary.push(Repository { inner: r })?;
     }
-    Ok(ary.into_value())
+    Ok(ary.into_value_with(ruby))
 }
 
 fn load_releases(ruby: &Ruby, path: String, owner: String, repo: String) -> Result<magnus::Value, Error> {
@@ -323,7 +347,7 @@ fn load_releases(ruby: &Ruby, path: String, owner: String, repo: String) -> Resu
     for r in releases {
         ary.push(Release { inner: r })?;
     }
-    Ok(ary.into_value())
+    Ok(ary.into_value_with(ruby))
 }
 
 fn load_commits(ruby: &Ruby, path: String, owner: String, repo: String) -> Result<magnus::Value, Error> {
@@ -333,7 +357,7 @@ fn load_commits(ruby: &Ruby, path: String, owner: String, repo: String) -> Resul
     for r in commits {
         ary.push(Commit { inner: r })?;
     }
-    Ok(ary.into_value())
+    Ok(ary.into_value_with(ruby))
 }
 
 #[magnus::init]
@@ -381,9 +405,6 @@ pub fn init(ruby: &Ruby) -> Result<(), Error> {
 
     let behavior_class = module.define_class("MockBehavior", ruby.class_object())?;
     behavior_class.define_singleton_method("error", function!(MockBehavior::error, 1))?;
-
-    module.const_set("INTERNAL_SERVER_ERROR", 0)?;
-    module.const_set("RATE_LIMIT_EXCEEDED", 1)?;
 
     Ok(())
 }

@@ -40,6 +40,10 @@ fn lock_error() -> PyErr {
     PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("mock server lock poisoned")
 }
 
+fn server_stopped_error() -> PyErr {
+    PyErr::new::<PyRuntimeError, _>("mock server has been stopped")
+}
+
 #[pyclass(module = "github_mock_api")]
 struct MockServer {
     server: Mutex<Option<RustMockServer>>,
@@ -91,63 +95,81 @@ impl MockServer {
 
     fn add_repository(&self, repository: &Repository) -> PyResult<()> {
         let lock = self.server.lock().map_err(|_| lock_error())?;
-        if let Some(ref server) = *lock {
-            runtime()
-                .map_err(runtime_error)?
-                .block_on(server.add_repository(repository.inner.clone()));
+        match *lock {
+            Some(ref server) => {
+                runtime()
+                    .map_err(runtime_error)?
+                    .block_on(server.add_repository(repository.inner.clone()));
+                Ok(())
+            }
+            None => Err(server_stopped_error()),
         }
-        Ok(())
     }
 
     fn add_release(&self, owner: &str, repo: &str, release: &Release) -> PyResult<()> {
         let lock = self.server.lock().map_err(|_| lock_error())?;
-        if let Some(ref server) = *lock {
-            runtime()
-                .map_err(runtime_error)?
-                .block_on(server.add_release(owner, repo, release.inner.clone()));
+        match *lock {
+            Some(ref server) => {
+                runtime()
+                    .map_err(runtime_error)?
+                    .block_on(server.add_release(owner, repo, release.inner.clone()));
+                Ok(())
+            }
+            None => Err(server_stopped_error()),
         }
-        Ok(())
     }
 
     fn add_commit(&self, owner: &str, repo: &str, commit: &Commit) -> PyResult<()> {
         let lock = self.server.lock().map_err(|_| lock_error())?;
-        if let Some(ref server) = *lock {
-            runtime()
-                .map_err(runtime_error)?
-                .block_on(server.add_commit(owner, repo, commit.inner.clone()));
+        match *lock {
+            Some(ref server) => {
+                runtime()
+                    .map_err(runtime_error)?
+                    .block_on(server.add_commit(owner, repo, commit.inner.clone()));
+                Ok(())
+            }
+            None => Err(server_stopped_error()),
         }
-        Ok(())
     }
 
     fn add_asset(&self, owner: &str, repo: &str, tag: &str, asset: &Asset) -> PyResult<()> {
         let lock = self.server.lock().map_err(|_| lock_error())?;
-        if let Some(ref server) = *lock {
-            runtime()
-                .map_err(runtime_error)?
-                .block_on(server.add_asset(owner, repo, tag, asset.inner.clone()));
+        match *lock {
+            Some(ref server) => {
+                runtime()
+                    .map_err(runtime_error)?
+                    .block_on(server.add_asset(owner, repo, tag, asset.inner.clone()));
+                Ok(())
+            }
+            None => Err(server_stopped_error()),
         }
-        Ok(())
     }
 
     fn add_mock_behavior(&self, behavior: &MockBehavior) -> PyResult<()> {
         let lock = self.server.lock().map_err(|_| lock_error())?;
-        if let Some(ref server) = *lock {
-            runtime()
-                .map_err(runtime_error)?
-                .block_on(server.add_mock_behavior(behavior.inner.clone()))
-                .map_err(mock_api_error)?;
+        match *lock {
+            Some(ref server) => {
+                runtime()
+                    .map_err(runtime_error)?
+                    .block_on(server.add_mock_behavior(behavior.inner.clone()))
+                    .map_err(mock_api_error)?;
+                Ok(())
+            }
+            None => Err(server_stopped_error()),
         }
-        Ok(())
     }
 
     fn clear_all_mock_behaviors(&self) -> PyResult<()> {
         let lock = self.server.lock().map_err(|_| lock_error())?;
-        if let Some(ref server) = *lock {
-            runtime()
-                .map_err(runtime_error)?
-                .block_on(server.clear_all_mock_behaviors());
+        match *lock {
+            Some(ref server) => {
+                runtime()
+                    .map_err(runtime_error)?
+                    .block_on(server.clear_all_mock_behaviors());
+                Ok(())
+            }
+            None => Err(server_stopped_error()),
         }
-        Ok(())
     }
 }
 
@@ -178,31 +200,28 @@ impl Repository {
         self.inner.name.clone()
     }
 
-    #[setter]
-    fn set_name(&mut self, name: String) {
-        self.inner.name = name;
+    fn description(&self, description: String) -> Self {
+        Self {
+            inner: self.inner.clone().description(description),
+        }
     }
 
-    // Add other fields as needed, or use a generic approach if possible.
-    // For now, I'll provide the builder methods.
-    fn description(&mut self, description: String) -> Self {
-        self.inner = self.inner.clone().description(description);
-        self.clone()
+    fn private(&self, private: bool) -> Self {
+        Self {
+            inner: self.inner.clone().private(private),
+        }
     }
 
-    fn private(&mut self, private: bool) -> Self {
-        self.inner = self.inner.clone().private(private);
-        self.clone()
+    fn stargazers_count(&self, count: u64) -> Self {
+        Self {
+            inner: self.inner.clone().stargazers_count(count),
+        }
     }
 
-    fn stargazers_count(&mut self, count: u64) -> Self {
-        self.inner = self.inner.clone().stargazers_count(count);
-        self.clone()
-    }
-
-    fn default_branch(&mut self, branch: String) -> Self {
-        self.inner = self.inner.clone().default_branch(branch);
-        self.clone()
+    fn default_branch(&self, branch: String) -> Self {
+        Self {
+            inner: self.inner.clone().default_branch(branch),
+        }
     }
 }
 
@@ -228,24 +247,28 @@ impl Release {
         Ok(releases.into_iter().map(|r| Self { inner: r }).collect())
     }
 
-    fn name(&mut self, name: String) -> Self {
-        self.inner = self.inner.clone().name(name);
-        self.clone()
+    fn name(&self, name: String) -> Self {
+        Self {
+            inner: self.inner.clone().name(name),
+        }
     }
 
-    fn body(&mut self, body: String) -> Self {
-        self.inner = self.inner.clone().body(body);
-        self.clone()
+    fn body(&self, body: String) -> Self {
+        Self {
+            inner: self.inner.clone().body(body),
+        }
     }
 
-    fn draft(&mut self, draft: bool) -> Self {
-        self.inner = self.inner.clone().draft(draft);
-        self.clone()
+    fn draft(&self, draft: bool) -> Self {
+        Self {
+            inner: self.inner.clone().draft(draft),
+        }
     }
 
-    fn prerelease(&mut self, prerelease: bool) -> Self {
-        self.inner = self.inner.clone().prerelease(prerelease);
-        self.clone()
+    fn prerelease(&self, prerelease: bool) -> Self {
+        Self {
+            inner: self.inner.clone().prerelease(prerelease),
+        }
     }
 }
 
@@ -271,14 +294,16 @@ impl Commit {
         Ok(commits.into_iter().map(|c| Self { inner: c }).collect())
     }
 
-    fn sha(&mut self, sha: String) -> Self {
-        self.inner = self.inner.clone().sha(sha);
-        self.clone()
+    fn sha(&self, sha: String) -> Self {
+        Self {
+            inner: self.inner.clone().sha(sha),
+        }
     }
 
-    fn message(&mut self, message: String) -> Self {
-        self.inner = self.inner.clone().message(message);
-        self.clone()
+    fn message(&self, message: String) -> Self {
+        Self {
+            inner: self.inner.clone().message(message),
+        }
     }
 }
 

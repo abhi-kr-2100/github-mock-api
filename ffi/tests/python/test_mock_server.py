@@ -76,7 +76,7 @@ class TestMockServer:
 
     def test_add_release(self, server: MockServer) -> None:
         release = Release("octocat", "hello-world", "v1.0.0")
-        release.name("v1.0.0 Release")
+        release = release.name("v1.0.0 Release")
         server.add_release("octocat", "hello-world", release)
 
         resp = requests.get(f"{server.uri()}/repos/octocat/hello-world/releases/tags/v1.0.0")
@@ -87,8 +87,8 @@ class TestMockServer:
 
     def test_add_commit(self, server: MockServer) -> None:
         commit = Commit("octocat", "hello-world")
-        commit.sha("abc123def456")
-        commit.message("Initial commit")
+        commit = commit.sha("abc123def456")
+        commit = commit.message("Initial commit")
         server.add_commit("octocat", "hello-world", commit)
 
         resp = requests.get(f"{server.uri()}/repos/octocat/hello-world/commits/abc123def456")

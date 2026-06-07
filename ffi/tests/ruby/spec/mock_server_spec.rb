@@ -6,7 +6,7 @@ RSpec.describe GitHubMockAPI::MockServer do
 
   after { @server&.stop }
 
-  let(:data_dir) { "/app/testing/data" }
+  let(:data_dir) { File.expand_path("../../../../../testing/data", __dir__) }
 
   describe ".start" do
     it "starts a server and returns a MockServer instance" do
@@ -122,7 +122,7 @@ RSpec.describe GitHubMockAPI::MockServer do
     end
 
     it "applies mock behaviors" do
-      behavior = GitHubMockAPI::MockBehavior.error(GitHubMockAPI::INTERNAL_SERVER_ERROR)
+      behavior = GitHubMockAPI::MockBehavior.error(:internal_server_error)
       @server.add_mock_behavior(behavior)
 
       uri = URI("#{@server.uri}/repos/any/repo")
@@ -135,7 +135,7 @@ RSpec.describe GitHubMockAPI::MockServer do
     end
 
     it "loads data from files" do
-      repos_file = File.join(data_dir, "repositories.json")
+      repos_file = File.expand_path("../../../../../testing/data/repositories.json", __FILE__)
       repos = GitHubMockAPI::Repository.load_from_file(repos_file)
       repos.each { |r| @server.add_repository(r) }
 

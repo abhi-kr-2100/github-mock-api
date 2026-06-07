@@ -61,6 +61,7 @@ mod ffi {
         InvalidHost,
         Conflict,
         DataLoad,
+        ServerStopped,
     }
 
     impl From<Error> for MockServerError {
@@ -113,27 +114,31 @@ mod ffi {
                 .map_err(MockServerError::from)
         }
 
-        pub fn add_repository(&mut self, repository: &Repository) {
-            runtime()
-                .expect("runtime")
+        pub fn add_repository(&mut self, repository: &Repository) -> Result<(), MockServerError> {
+            runtime()?
                 .block_on(self.server.add_repository(repository.inner.clone()));
+            Ok(())
         }
 
         pub fn add_repositories_from_file(&mut self, path: &str) -> Result<(), MockServerError> {
             let repos = RustRepository::load_from_file(path)
                 .map_err(|e| MockServerError::from(CommonError::from(e)))?;
             for repo in repos {
-                runtime()
-                    .expect("runtime")
+                runtime()?
                     .block_on(self.server.add_repository(repo));
             }
             Ok(())
         }
 
-        pub fn add_release(&mut self, owner: &str, repo: &str, release: &Release) {
-            runtime()
-                .expect("runtime")
+        pub fn add_release(
+            &mut self,
+            owner: &str,
+            repo: &str,
+            release: &Release,
+        ) -> Result<(), MockServerError> {
+            runtime()?
                 .block_on(self.server.add_release(owner, repo, release.inner.clone()));
+            Ok(())
         }
 
         pub fn add_releases_from_file(
@@ -145,17 +150,21 @@ mod ffi {
             let releases = RustRelease::load_from_file(path, owner, repo)
                 .map_err(|e| MockServerError::from(CommonError::from(e)))?;
             for release in releases {
-                runtime()
-                    .expect("runtime")
+                runtime()?
                     .block_on(self.server.add_release(owner, repo, release));
             }
             Ok(())
         }
 
-        pub fn add_commit(&mut self, owner: &str, repo: &str, commit: &Commit) {
-            runtime()
-                .expect("runtime")
+        pub fn add_commit(
+            &mut self,
+            owner: &str,
+            repo: &str,
+            commit: &Commit,
+        ) -> Result<(), MockServerError> {
+            runtime()?
                 .block_on(self.server.add_commit(owner, repo, commit.inner.clone()));
+            Ok(())
         }
 
         pub fn add_commits_from_file(
@@ -167,17 +176,22 @@ mod ffi {
             let commits = RustCommit::load_from_file(path, owner, repo)
                 .map_err(|e| MockServerError::from(CommonError::from(e)))?;
             for commit in commits {
-                runtime()
-                    .expect("runtime")
+                runtime()?
                     .block_on(self.server.add_commit(owner, repo, commit));
             }
             Ok(())
         }
 
-        pub fn add_asset(&mut self, owner: &str, repo: &str, tag: &str, asset: &Asset) {
-            runtime()
-                .expect("runtime")
+        pub fn add_asset(
+            &mut self,
+            owner: &str,
+            repo: &str,
+            tag: &str,
+            asset: &Asset,
+        ) -> Result<(), MockServerError> {
+            runtime()?
                 .block_on(self.server.add_asset(owner, repo, tag, asset.inner.clone()));
+            Ok(())
         }
 
         pub fn add_mock_behavior(
@@ -189,10 +203,10 @@ mod ffi {
                 .map_err(MockServerError::from)
         }
 
-        pub fn clear_all_mock_behaviors(&mut self) {
-            runtime()
-                .expect("runtime")
+        pub fn clear_all_mock_behaviors(&mut self) -> Result<(), MockServerError> {
+            runtime()?
                 .block_on(self.server.clear_all_mock_behaviors());
+            Ok(())
         }
     }
 
@@ -202,6 +216,22 @@ mod ffi {
                 inner: RustRepository::new(owner, name),
             })
         }
+
+        pub fn set_description(&mut self, description: &str) {
+            self.inner = self.inner.clone().description(description);
+        }
+
+        pub fn set_private(&mut self, private: bool) {
+            self.inner = self.inner.clone().private(private);
+        }
+
+        pub fn set_stargazers_count(&mut self, count: u64) {
+            self.inner = self.inner.clone().stargazers_count(count);
+        }
+
+        pub fn set_default_branch(&mut self, branch: &str) {
+            self.inner = self.inner.clone().default_branch(branch);
+        }
     }
 
     impl Release {
@@ -210,6 +240,26 @@ mod ffi {
                 inner: RustRelease::new(owner, repo, tag_name),
             })
         }
+
+        pub fn set_name(&mut self, name: &str) {
+            self.inner = self.inner.clone().name(name);
+        }
+
+        pub fn set_body(&mut self, body: &str) {
+            self.inner = self.inner.clone().body(body);
+        }
+
+        pub fn set_target_commitish(&mut self, commitish: &str) {
+            self.inner = self.inner.clone().target_commitish(commitish);
+        }
+
+        pub fn set_draft(&mut self, draft: bool) {
+            self.inner = self.inner.clone().draft(draft);
+        }
+
+        pub fn set_prerelease(&mut self, prerelease: bool) {
+            self.inner = self.inner.clone().prerelease(prerelease);
+        }
     }
 
     impl Commit {
@@ -217,6 +267,22 @@ mod ffi {
             Box::new(Commit {
                 inner: RustCommit::new(owner, repo),
             })
+        }
+
+        pub fn set_sha(&mut self, sha: &str) {
+            self.inner = self.inner.clone().sha(sha);
+        }
+
+        pub fn set_message(&mut self, message: &str) {
+            self.inner = self.inner.clone().message(message);
+        }
+
+        pub fn set_author_name(&mut self, name: &str) {
+            self.inner = self.inner.clone().author_name(name);
+        }
+
+        pub fn set_author_email(&mut self, email: &str) {
+            self.inner = self.inner.clone().author_email(email);
         }
     }
 
