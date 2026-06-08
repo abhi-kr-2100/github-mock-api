@@ -35,6 +35,69 @@ fn lock_error() -> PyErr {
     PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("mock server lock poisoned")
 }
 
+#[pyclass(module = "github_mock_api", rename_all = "SCREAMING_SNAKE_CASE", from_py_object)]
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum MockError {
+    InternalServerError,
+    RateLimitExceeded,
+}
+
+impl From<MockError> for ::github_mock_api::MockError {
+    fn from(err: MockError) -> Self {
+        match err {
+            MockError::InternalServerError => ::github_mock_api::MockError::InternalServerError,
+            MockError::RateLimitExceeded => ::github_mock_api::MockError::RateLimitExceeded,
+        }
+    }
+}
+
+#[pyclass(module = "github_mock_api", from_py_object)]
+#[derive(Clone)]
+pub struct MockBehavior {
+    inner: ::github_mock_api::MockBehavior,
+}
+
+#[pymethods]
+impl MockBehavior {
+    #[staticmethod]
+    fn builder() -> MockBehaviorBuilder {
+        MockBehaviorBuilder { error: None }
+    }
+
+    pub fn error(&self, error: MockError) -> Self {
+        let mut builder = ::github_mock_api::MockBehavior::builder();
+        builder = builder.error(error.into());
+        Self {
+            inner: builder.build(),
+        }
+    }
+}
+
+#[pyclass(module = "github_mock_api", from_py_object)]
+#[derive(Clone)]
+pub struct MockBehaviorBuilder {
+    error: Option<MockError>,
+}
+
+#[pymethods]
+impl MockBehaviorBuilder {
+    pub fn error(&self, error: MockError) -> Self {
+        let mut new = self.clone();
+        new.error = Some(error);
+        new
+    }
+
+    pub fn build(&self) -> MockBehavior {
+        let mut builder = ::github_mock_api::MockBehavior::builder();
+        if let Some(err) = self.error {
+            builder = builder.error(err.into());
+        }
+        MockBehavior {
+            inner: builder.build(),
+        }
+    }
+}
+
 #[pyclass(module = "github_mock_api")]
 struct MockServer {
     server: Mutex<Option<RustMockServer>>,
@@ -83,10 +146,36 @@ impl MockServer {
         }
         Ok(())
     }
+
+    fn add_mock_behavior(&self, behavior: MockBehavior) -> PyResult<()> {
+        let lock = self.server.lock().map_err(|_| lock_error())?;
+        let server = lock.as_ref().ok_or_else(|| {
+            PyErr::new::<PyRuntimeError, _>("server is stopped")
+        })?;
+        runtime()
+            .map_err(runtime_error)?
+            .block_on(server.add_mock_behavior(behavior.inner))
+            .map_err(mock_api_error)?;
+        Ok(())
+    }
+
+    fn clear_all_mock_behaviors(&self) -> PyResult<()> {
+        let lock = self.server.lock().map_err(|_| lock_error())?;
+        let server = lock.as_ref().ok_or_else(|| {
+            PyErr::new::<PyRuntimeError, _>("server is stopped")
+        })?;
+        runtime()
+            .map_err(runtime_error)?
+            .block_on(server.clear_all_mock_behaviors());
+        Ok(())
+    }
 }
 
 pub fn init_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<MockServer>()?;
+    m.add_class::<MockError>()?;
+    m.add_class::<MockBehavior>()?;
+    m.add_class::<MockBehaviorBuilder>()?;
     Ok(())
 }
 
