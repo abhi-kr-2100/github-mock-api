@@ -51,7 +51,6 @@ RSpec.describe GitHubMockAPI::MockServer do
       @server = described_class.start
       expect(@server.uri).to start_with("http://")
     end
-
   end
 
   context "with multiple servers" do

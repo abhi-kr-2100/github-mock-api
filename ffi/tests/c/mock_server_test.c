@@ -185,7 +185,8 @@ START_TEST(test_mock_behavior_immutable_builder) {
     MockBehavior_destroy(b1);
     MockBehavior_destroy(b2);
     MockBehavior_destroy(b3);
-    MockServer_stop(server);
+    MockServer_stop_result stopped2 = MockServer_stop(server);
+    ck_assert(stopped2.is_ok);
     MockServer_destroy(server);
 }
 END_TEST

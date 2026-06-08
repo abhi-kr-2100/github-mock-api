@@ -24,6 +24,7 @@ mod ffi {
 
     #[diplomat::rust_link(github_mock_api::MockBehavior, Struct)]
     #[diplomat::opaque_mut]
+    #[derive(Clone, Copy)]
     pub struct MockBehavior {
         pub(crate) error: Option<MockError>,
     }
