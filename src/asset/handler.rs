@@ -160,12 +160,7 @@ mod tests {
             .json()
             .await
             .map_err(|e| crate::Error::Io(std::io::Error::other(e)))?;
-        assert!(
-            body["message"]
-                .as_str()
-                .unwrap()
-                .contains("Invalid content type")
-        );
+        assert!(body["message"].as_str().unwrap().contains("Invalid content type"));
 
         Ok(())
     }
@@ -177,9 +172,7 @@ mod tests {
         let asset = Asset::from_bytes("MyAsset.zip", content.clone(), "application/zip");
 
         // Registered with specific casing
-        server
-            .add_asset("Owner", "Repo", "v1.0.0-BETA", asset)
-            .await;
+        server.add_asset("Owner", "Repo", "v1.0.0-BETA", asset).await;
 
         let client = Client::new();
 

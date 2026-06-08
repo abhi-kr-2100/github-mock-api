@@ -43,6 +43,19 @@ void main() {
       expect(server.stop, returnsNormally);
     });
 
+    test('add mock behavior', () {
+      final server = MockServer.start();
+      addTearDown(server.stop);
+      final behavior = MockBehavior.new_().withError(MockError.internalServerError);
+      expect(() => server.addMockBehavior(behavior), returnsNormally);
+    });
+
+    test('clear all mock behaviors', () {
+      final server = MockServer.start();
+      addTearDown(server.stop);
+      expect(server.clearAllMockBehaviors, returnsNormally);
+    });
+
     test('throws MockServerError on invalid host', () {
       expect(
         () => MockServer.startOn('not an ip address', 0),

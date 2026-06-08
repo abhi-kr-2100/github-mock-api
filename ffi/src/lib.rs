@@ -25,24 +25,29 @@ mod ffi {
     #[diplomat::rust_link(github_mock_api::MockBehavior, Struct)]
     #[diplomat::opaque_mut]
     pub struct MockBehavior {
-        pub(crate) inner: github_mock_api::MockBehavior,
+        pub(crate) error: Option<MockError>,
     }
 
     impl MockBehavior {
         /// Create a new mock behavior builder.
         pub fn new() -> Box<MockBehavior> {
-            Box::new(MockBehavior {
-                inner: github_mock_api::MockBehavior::builder().build(),
-            })
+            Box::new(MockBehavior { error: None })
         }
 
         /// Set the error for the mock behavior.
         pub fn with_error(&self, error: MockError) -> Box<MockBehavior> {
             Box::new(MockBehavior {
-                inner: github_mock_api::MockBehavior::builder()
-                    .error(error.into())
-                    .build(),
+                error: Some(error),
+                ..*self
             })
+        }
+
+        pub(crate) fn build(&self) -> github_mock_api::MockBehavior {
+            let mut builder = github_mock_api::MockBehavior::builder();
+            if let Some(error) = self.error {
+                builder = builder.error(error.into());
+            }
+            builder.build()
         }
     }
 
@@ -119,7 +124,7 @@ mod ffi {
         /// Add a mock behavior to the server.
         pub fn add_mock_behavior(&self, behavior: &MockBehavior) -> Result<(), MockServerError> {
             runtime()?
-                .block_on(self.server.add_mock_behavior(behavior.inner.clone()))
+                .block_on(self.server.add_mock_behavior(behavior.build()))
                 .map_err(MockServerError::from)
         }
 
