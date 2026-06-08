@@ -7,6 +7,45 @@ mod ffi {
 
     use github_mock_api_ffi_common::{CommonError, parse_host, runtime};
 
+    #[diplomat::rust_link(github_mock_api::MockError, Enum)]
+    pub enum MockError {
+        InternalServerError,
+        RateLimitExceeded,
+    }
+
+    impl From<MockError> for github_mock_api::MockError {
+        fn from(error: MockError) -> Self {
+            match error {
+                MockError::InternalServerError => github_mock_api::MockError::InternalServerError,
+                MockError::RateLimitExceeded => github_mock_api::MockError::RateLimitExceeded,
+            }
+        }
+    }
+
+    #[diplomat::rust_link(github_mock_api::MockBehavior, Struct)]
+    #[diplomat::opaque_mut]
+    pub struct MockBehavior {
+        pub(crate) inner: github_mock_api::MockBehavior,
+    }
+
+    impl MockBehavior {
+        /// Create a new mock behavior builder.
+        pub fn new() -> Box<MockBehavior> {
+            Box::new(MockBehavior {
+                inner: github_mock_api::MockBehavior::builder().build(),
+            })
+        }
+
+        /// Set the error for the mock behavior.
+        pub fn with_error(&self, error: MockError) -> Box<MockBehavior> {
+            Box::new(MockBehavior {
+                inner: github_mock_api::MockBehavior::builder()
+                    .error(error.into())
+                    .build(),
+            })
+        }
+    }
+
     #[diplomat::rust_link(github_mock_api::MockServer, Struct)]
     #[diplomat::opaque_mut]
     pub struct MockServer {
@@ -75,6 +114,19 @@ mod ffi {
             runtime()?
                 .block_on(self.server.stop())
                 .map_err(MockServerError::from)
+        }
+
+        /// Add a mock behavior to the server.
+        pub fn add_mock_behavior(&self, behavior: &MockBehavior) -> Result<(), MockServerError> {
+            runtime()?
+                .block_on(self.server.add_mock_behavior(behavior.inner.clone()))
+                .map_err(MockServerError::from)
+        }
+
+        /// Clear all mock behaviors from the server.
+        pub fn clear_all_mock_behaviors(&self) -> Result<(), MockServerError> {
+            runtime()?.block_on(self.server.clear_all_mock_behaviors());
+            Ok(())
         }
     }
 }

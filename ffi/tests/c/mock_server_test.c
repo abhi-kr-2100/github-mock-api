@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include "github_mock_api/MockServer.h"
+#include "github_mock_api/MockBehavior.h"
 #include "github_mock_api/diplomat_runtime.h"
 
 #define URI_PREFIX "http://127.0.0.1:"
@@ -118,6 +119,40 @@ START_TEST(test_invalid_host) {
 }
 END_TEST
 
+START_TEST(test_mock_behavior_conflict) {
+    MockServer_start_result started = MockServer_start();
+    ck_assert(started.is_ok);
+    MockServer *server = started.ok;
+
+    MockBehavior *b1_builder = MockBehavior_new();
+    MockBehavior *b1 = MockBehavior_with_error(b1_builder, MockError_InternalServerError);
+    MockBehavior_destroy(b1_builder);
+
+    MockBehavior *b2_builder = MockBehavior_new();
+    MockBehavior *b2 = MockBehavior_with_error(b2_builder, MockError_RateLimitExceeded);
+    MockBehavior_destroy(b2_builder);
+
+    MockServer_add_mock_behavior_result res1 = MockServer_add_mock_behavior(server, b1);
+    ck_assert(res1.is_ok);
+
+    MockServer_add_mock_behavior_result res2 = MockServer_add_mock_behavior(server, b2);
+    ck_assert(!res2.is_ok);
+    ck_assert_int_eq((int)res2.err, (int)MockServerError_Conflict);
+
+    MockServer_clear_all_mock_behaviors_result res3 = MockServer_clear_all_mock_behaviors(server);
+    ck_assert(res3.is_ok);
+
+    // After clearing, we should be able to add b2
+    MockServer_add_mock_behavior_result res4 = MockServer_add_mock_behavior(server, b2);
+    ck_assert(res4.is_ok);
+
+    MockBehavior_destroy(b1);
+    MockBehavior_destroy(b2);
+    MockServer_stop(server);
+    MockServer_destroy(server);
+}
+END_TEST
+
 START_TEST(test_start_after_stop) {
     MockServer_start_result r1 = MockServer_start();
     ck_assert(r1.is_ok);
@@ -153,6 +188,7 @@ Suite *mock_server_suite(void) {
     tcase_add_test(tc_core, test_two_servers);
     tcase_add_test(tc_core, test_stop_idempotency);
     tcase_add_test(tc_core, test_invalid_host);
+    tcase_add_test(tc_core, test_mock_behavior_conflict);
     tcase_add_test(tc_core, test_start_after_stop);
 
     suite_add_tcase(s, tc_core);
