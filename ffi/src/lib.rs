@@ -37,10 +37,9 @@ mod ffi {
 
         /// Set the error for the mock behavior.
         pub fn with_error(&self, error: MockError) -> Box<MockBehavior> {
-            Box::new(MockBehavior {
-                error: Some(error),
-                ..*self
-            })
+            let mut new = *self;
+            new.error = Some(error);
+            Box::new(new)
         }
 
         pub(crate) fn build(&self) -> github_mock_api::MockBehavior {

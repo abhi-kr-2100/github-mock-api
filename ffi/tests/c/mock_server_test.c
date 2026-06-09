@@ -192,7 +192,6 @@ START_TEST(test_mock_behavior_immutable_builder) {
 }
 END_TEST
 
-
 START_TEST(test_start_after_stop) {
     MockServer_start_result r1 = MockServer_start();
     ck_assert(r1.is_ok);

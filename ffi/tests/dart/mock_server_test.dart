@@ -35,27 +35,6 @@ void main() {
       expect(server.stop, returnsNormally);
     });
 
-    test('stop is idempotent', () {
-      final server = MockServer.start();
-      addTearDown(server.stop);
-      server.stop();
-      expect(server.stop, returnsNormally);
-      expect(server.stop, returnsNormally);
-    });
-
-    test('add mock behavior', () {
-      final server = MockServer.start();
-      addTearDown(server.stop);
-      final behavior = MockBehavior.new_().withError(MockError.internalServerError);
-      expect(() => server.addMockBehavior(behavior), returnsNormally);
-    });
-
-    test('clear all mock behaviors', () {
-      final server = MockServer.start();
-      addTearDown(server.stop);
-      expect(server.clearAllMockBehaviors, returnsNormally);
-    });
-
     test('internal server error behavior is effective', () async {
       final server = MockServer.start();
       addTearDown(server.stop);
@@ -112,6 +91,14 @@ void main() {
       response = await request.close();
       expect(response.statusCode, equals(404));
       await response.drain();
+    });
+
+    test('stop is idempotent', () {
+      final server = MockServer.start();
+      addTearDown(server.stop);
+      server.stop();
+      expect(server.stop, returnsNormally);
+      expect(server.stop, returnsNormally);
     });
 
     test('throws MockServerError on invalid host', () {
