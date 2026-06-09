@@ -72,4 +72,11 @@ RSpec.describe "Mock Behavior" do
     @server.add_mock_behavior(behavior1)
     expect { @server.add_mock_behavior(behavior2) }.to raise_error(RuntimeError, /A global error behavior is already set/)
   end
+
+  it "supports method chaining and identity preservation" do
+    behavior = GitHubMockAPI::MockBehavior.new
+    chained = behavior.error(:internal_server_error)
+
+    expect(chained).to equal(behavior)
+  end
 end
