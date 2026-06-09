@@ -63,14 +63,6 @@ impl MockBehavior {
     fn builder() -> MockBehaviorBuilder {
         MockBehaviorBuilder { error: None }
     }
-
-    pub fn error(&self, error: MockError) -> Self {
-        let mut builder = ::github_mock_api::MockBehavior::builder();
-        builder = builder.error(error.into());
-        Self {
-            inner: builder.build(),
-        }
-    }
 }
 
 #[pyclass(module = "github_mock_api", from_py_object)]
