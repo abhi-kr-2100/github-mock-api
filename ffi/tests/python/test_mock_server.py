@@ -5,7 +5,7 @@ import urllib.error
 import urllib.request
 
 import pytest
-from github_mock_api import MockServer, MockBehavior, MockError
+from github_mock_api import MockServer, MockBehavior, MockError, Repository
 
 
 class TestMockServer:
@@ -97,3 +97,21 @@ class TestMockServer:
         behavior1 = builder1.build()
         behavior2 = builder2.build()
         assert behavior1 is not behavior2
+
+    def test_add_repository(self, server: MockServer) -> None:
+        repo = (
+            Repository.builder("octocat", "hello-world")
+            .description("A test repository")
+            .stargazers_count(42)
+            .build()
+        )
+        server.add_repository(repo)
+
+        url = f"{server.uri()}/repos/octocat/hello-world"
+        with urllib.request.urlopen(url) as response:
+            assert response.status == 200
+            body = json.loads(response.read().decode())
+            assert body["name"] == "hello-world"
+            assert body["owner"]["login"] == "octocat"
+            assert body["description"] == "A test repository"
+            assert body["stargazers_count"] == 42

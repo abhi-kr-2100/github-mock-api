@@ -94,6 +94,72 @@ impl MockBehaviorBuilder {
     }
 }
 
+#[pyclass(module = "github_mock_api", from_py_object)]
+#[derive(Clone)]
+pub struct Repository {
+    inner: ::github_mock_api::Repository,
+}
+
+#[pymethods]
+impl Repository {
+    #[staticmethod]
+    pub fn builder(owner: String, name: String) -> RepositoryBuilder {
+        RepositoryBuilder::new(owner, name)
+    }
+}
+
+#[pyclass(module = "github_mock_api", from_py_object)]
+#[derive(Clone)]
+pub struct RepositoryBuilder {
+    inner: ::github_mock_api::Repository,
+}
+
+#[pymethods]
+impl RepositoryBuilder {
+    #[staticmethod]
+    pub fn new(owner: String, name: String) -> Self {
+        Self {
+            inner: ::github_mock_api::Repository::new(&owner, &name),
+        }
+    }
+
+    pub fn description(&self, description: String) -> Self {
+        let mut new = self.clone();
+        new.inner = new.inner.description(description);
+        new
+    }
+
+    pub fn clear_description(&self) -> Self {
+        let mut new = self.clone();
+        new.inner = new.inner.clear_description();
+        new
+    }
+
+    pub fn private(&self, private: bool) -> Self {
+        let mut new = self.clone();
+        new.inner = new.inner.private(private);
+        new
+    }
+
+    pub fn stargazers_count(&self, count: u64) -> Self {
+        let mut new = self.clone();
+        new.inner = new.inner.stargazers_count(count);
+        new
+    }
+
+    pub fn default_branch(&self, branch: String) -> Self {
+        let mut new = self.clone();
+        new.inner = new.inner.default_branch(branch);
+        new
+    }
+
+    pub fn build(&self) -> Repository {
+        Repository {
+            inner: self.inner.clone(),
+        }
+    }
+}
+
 #[pyclass(module = "github_mock_api")]
 struct MockServer {
     server: Mutex<Option<RustMockServer>>,
@@ -165,6 +231,17 @@ impl MockServer {
             .block_on(server.clear_all_mock_behaviors());
         Ok(())
     }
+
+    fn add_repository(&self, repository: Repository) -> PyResult<()> {
+        let lock = self.server.lock().map_err(|_| lock_error())?;
+        let server = lock
+            .as_ref()
+            .ok_or_else(|| PyErr::new::<PyRuntimeError, _>("server is stopped"))?;
+        runtime()
+            .map_err(runtime_error)?
+            .block_on(server.add_repository(repository.inner));
+        Ok(())
+    }
 }
 
 pub fn init_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
@@ -172,6 +249,8 @@ pub fn init_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<MockError>()?;
     m.add_class::<MockBehavior>()?;
     m.add_class::<MockBehaviorBuilder>()?;
+    m.add_class::<Repository>()?;
+    m.add_class::<RepositoryBuilder>()?;
     Ok(())
 }
 
