@@ -23,7 +23,7 @@ mod ffi {
     }
 
     #[diplomat::rust_link(github_mock_api::MockBehavior, Struct)]
-    #[diplomat::opaque_mut]
+    #[diplomat::opaque]
     #[derive(Clone, Copy)]
     pub struct MockBehavior {
         pub(crate) error: Option<MockError>,
@@ -131,7 +131,7 @@ mod ffi {
 
         /// Clear all mock behaviors from the server.
         pub fn clear_all_mock_behaviors(&self) -> Result<(), MockServerError> {
-            runtime()?.block_on(self.server.clear_all_mock_behaviors());
+            let _ = runtime()?.block_on(self.server.clear_all_mock_behaviors());
             Ok(())
         }
     }
