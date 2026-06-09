@@ -35,7 +35,11 @@ fn lock_error() -> PyErr {
     PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("mock server lock poisoned")
 }
 
-#[pyclass(module = "github_mock_api", rename_all = "SCREAMING_SNAKE_CASE", from_py_object)]
+#[pyclass(
+    module = "github_mock_api",
+    rename_all = "SCREAMING_SNAKE_CASE",
+    from_py_object
+)]
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum MockError {
     InternalServerError,
@@ -141,9 +145,9 @@ impl MockServer {
 
     fn add_mock_behavior(&self, behavior: MockBehavior) -> PyResult<()> {
         let lock = self.server.lock().map_err(|_| lock_error())?;
-        let server = lock.as_ref().ok_or_else(|| {
-            PyErr::new::<PyRuntimeError, _>("server is stopped")
-        })?;
+        let server = lock
+            .as_ref()
+            .ok_or_else(|| PyErr::new::<PyRuntimeError, _>("server is stopped"))?;
         runtime()
             .map_err(runtime_error)?
             .block_on(server.add_mock_behavior(behavior.inner))
@@ -153,9 +157,9 @@ impl MockServer {
 
     fn clear_all_mock_behaviors(&self) -> PyResult<()> {
         let lock = self.server.lock().map_err(|_| lock_error())?;
-        let server = lock.as_ref().ok_or_else(|| {
-            PyErr::new::<PyRuntimeError, _>("server is stopped")
-        })?;
+        let server = lock
+            .as_ref()
+            .ok_or_else(|| PyErr::new::<PyRuntimeError, _>("server is stopped"))?;
         runtime()
             .map_err(runtime_error)?
             .block_on(server.clear_all_mock_behaviors());
