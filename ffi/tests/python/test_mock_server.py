@@ -1,7 +1,11 @@
 """Tests for the github_mock_api Python bindings."""
 
+import json
+import urllib.error
+import urllib.request
+
 import pytest
-from github_mock_api import MockServer
+from github_mock_api import MockServer, MockBehavior, MockError
 
 
 class TestMockServer:
@@ -56,3 +60,40 @@ class TestMockServer:
         servers.append(server)
         assert server.uri() == "http://127.0.0.1:12346"
         server.stop()
+
+    def test_mock_behavior_internal_server_error(self, server: MockServer) -> None:
+        behavior = MockBehavior.builder().error(MockError.INTERNAL_SERVER_ERROR).build()
+        server.add_mock_behavior(behavior)
+
+        url = f"{server.uri()}/repos/owner/repo"
+        with pytest.raises(urllib.error.HTTPError) as excinfo:
+            urllib.request.urlopen(url)
+        assert excinfo.value.code == 500
+        body = json.loads(excinfo.value.read().decode())
+        assert body["message"] == "Internal Server Error"
+
+        server.clear_all_mock_behaviors()
+        with pytest.raises(urllib.error.HTTPError) as excinfo:
+            urllib.request.urlopen(url)
+        # Should be 404 because the repo doesn't exist, but not 500
+        assert excinfo.value.code == 404
+
+    def test_mock_behavior_rate_limit_exceeded(self, server: MockServer) -> None:
+        behavior = MockBehavior.builder().error(MockError.RATE_LIMIT_EXCEEDED).build()
+        server.add_mock_behavior(behavior)
+
+        url = f"{server.uri()}/repos/owner/repo"
+        with pytest.raises(urllib.error.HTTPError) as excinfo:
+            urllib.request.urlopen(url)
+        assert excinfo.value.code == 403
+        body = json.loads(excinfo.value.read().decode())
+        assert body["message"] == "API rate limit exceeded"
+
+    def test_mock_behavior_builder_immutability(self) -> None:
+        builder1 = MockBehavior.builder()
+        builder2 = builder1.error(MockError.INTERNAL_SERVER_ERROR)
+        assert builder1 is not builder2
+
+        behavior1 = builder1.build()
+        behavior2 = builder2.build()
+        assert behavior1 is not behavior2
