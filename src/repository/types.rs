@@ -9,6 +9,7 @@ use crate::util::{LoadError, load_json_from_file};
 pub struct RepositoryOwner {
     pub login: String,
     pub id: u64,
+    pub node_id: String,
     pub avatar_url: String,
     pub gravatar_id: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -25,6 +26,7 @@ impl RepositoryOwner {
         Self {
             login: login.to_string(),
             id,
+            node_id: format!("mock_node_id_{id}"),
             avatar_url: format!("https://avatars.githubusercontent.com/u/{id}?v=4"),
             gravatar_id: String::new(),
             url: Some(format!("https://api.github.com/users/{login}")),

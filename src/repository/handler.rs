@@ -41,6 +41,11 @@ mod tests {
         let body: serde_json::Value = resp.json().await?;
         assert_eq!(body["name"], "hello-world");
         assert_eq!(body["full_name"], "octocat/hello-world");
+        assert!(
+            body["owner"]["node_id"]
+                .as_str()
+                .is_some_and(|v| v.starts_with("mock_node_id_"))
+        );
         assert_eq!(body["stargazers_count"], 42);
         assert_eq!(body["watchers_count"], 42);
         assert_eq!(body["description"], "A test repository");
