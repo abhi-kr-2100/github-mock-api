@@ -70,6 +70,7 @@ void main() {
       final response = await request.close();
 
       expect(response.statusCode, equals(500));
+      await response.drain();
     });
 
     test('rate limit exceeded behavior is effective', () async {
@@ -86,6 +87,7 @@ void main() {
       final response = await request.close();
 
       expect(response.statusCode, equals(403));
+      await response.drain();
     });
 
     test('clearing behaviors restores normal response', () async {
@@ -102,12 +104,14 @@ void main() {
       var request = await client.getUrl(Uri.parse('$uri/repos/foo/bar'));
       var response = await request.close();
       expect(response.statusCode, equals(500));
+      await response.drain();
 
       server.clearAllMockBehaviors();
 
       request = await client.getUrl(Uri.parse('$uri/repos/foo/bar'));
       response = await request.close();
       expect(response.statusCode, equals(404));
+      await response.drain();
     });
 
     test('throws MockServerError on invalid host', () {

@@ -171,7 +171,8 @@ START_TEST(test_mock_behavior_immutable_builder) {
     ck_assert(res1.is_ok);
 
     // Adding b2 (InternalServerError) should succeed but subsequent add should conflict
-    MockServer_clear_all_mock_behaviors(server);
+    MockServer_clear_all_mock_behaviors_result clear_res = MockServer_clear_all_mock_behaviors(server);
+    ck_assert(clear_res.is_ok);
     MockServer_add_mock_behavior_result res2 = MockServer_add_mock_behavior(server, b2);
     ck_assert(res2.is_ok);
 

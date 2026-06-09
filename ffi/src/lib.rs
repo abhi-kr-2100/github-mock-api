@@ -131,7 +131,7 @@ mod ffi {
 
         /// Clear all mock behaviors from the server.
         pub fn clear_all_mock_behaviors(&self) -> Result<(), MockServerError> {
-            let _ = runtime()?.block_on(self.server.clear_all_mock_behaviors());
+            runtime()?.block_on(self.server.clear_all_mock_behaviors());
             Ok(())
         }
     }
