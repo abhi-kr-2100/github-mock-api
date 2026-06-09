@@ -35,6 +35,64 @@ void main() {
       expect(server.stop, returnsNormally);
     });
 
+    test('internal server error behavior is effective', () async {
+      final server = MockServer.start();
+      addTearDown(server.stop);
+      final uri = server.uri();
+
+      final behavior = MockBehavior.new_().withError(MockError.internalServerError);
+      server.addMockBehavior(behavior);
+
+      final client = HttpClient();
+      addTearDown(client.close);
+      final request = await client.getUrl(Uri.parse('$uri/repos/foo/bar'));
+      final response = await request.close();
+
+      expect(response.statusCode, equals(500));
+      await response.drain();
+    });
+
+    test('rate limit exceeded behavior is effective', () async {
+      final server = MockServer.start();
+      addTearDown(server.stop);
+      final uri = server.uri();
+
+      final behavior = MockBehavior.new_().withError(MockError.rateLimitExceeded);
+      server.addMockBehavior(behavior);
+
+      final client = HttpClient();
+      addTearDown(client.close);
+      final request = await client.getUrl(Uri.parse('$uri/repos/foo/bar'));
+      final response = await request.close();
+
+      expect(response.statusCode, equals(403));
+      await response.drain();
+    });
+
+    test('clearing behaviors restores normal response', () async {
+      final server = MockServer.start();
+      addTearDown(server.stop);
+      final uri = server.uri();
+
+      final behavior = MockBehavior.new_().withError(MockError.internalServerError);
+      server.addMockBehavior(behavior);
+
+      final client = HttpClient();
+      addTearDown(client.close);
+
+      var request = await client.getUrl(Uri.parse('$uri/repos/foo/bar'));
+      var response = await request.close();
+      expect(response.statusCode, equals(500));
+      await response.drain();
+
+      server.clearAllMockBehaviors();
+
+      request = await client.getUrl(Uri.parse('$uri/repos/foo/bar'));
+      response = await request.close();
+      expect(response.statusCode, equals(404));
+      await response.drain();
+    });
+
     test('stop is idempotent', () {
       final server = MockServer.start();
       addTearDown(server.stop);
