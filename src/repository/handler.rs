@@ -48,6 +48,11 @@ mod tests {
         );
         assert_eq!(body["stargazers_count"], 42);
         assert_eq!(body["watchers_count"], 42);
+        assert_eq!(body["watchers"], 42);
+        assert_eq!(body["forks_count"], 0);
+        assert_eq!(body["forks"], 0);
+        assert_eq!(body["open_issues_count"], 0);
+        assert_eq!(body["open_issues"], 0);
         assert_eq!(body["description"], "A test repository");
         Ok(())
     }
