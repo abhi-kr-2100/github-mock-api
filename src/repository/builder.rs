@@ -62,11 +62,14 @@ impl Repository {
             homepage: None,
             language: None,
             forks_count: 0,
+            forks: 0,
             stargazers_count: 0,
             watchers_count: 0,
+            watchers: 0,
             size: 0,
             default_branch: "main".to_string(),
             open_issues_count: 0,
+            open_issues: 0,
             is_template: false,
             topics: Vec::new(),
             has_issues: true,
@@ -106,6 +109,7 @@ impl Repository {
     pub fn stargazers_count(mut self, count: u64) -> Self {
         self.stargazers_count = count;
         self.watchers_count = count;
+        self.watchers = count;
         self
     }
 
