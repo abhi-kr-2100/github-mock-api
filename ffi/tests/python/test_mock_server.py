@@ -5,7 +5,7 @@ import urllib.error
 import urllib.request
 
 import pytest
-from github_mock_api import MockServer, MockBehavior, MockError, Repository
+from github_mock_api import MockServer, MockBehavior, MockError, Repository, Release
 
 
 class TestMockServer:
@@ -115,3 +115,21 @@ class TestMockServer:
             assert body["owner"]["login"] == "octocat"
             assert body["description"] == "A test repository"
             assert body["stargazers_count"] == 42
+
+    def test_add_release(self, server: MockServer) -> None:
+        release = (
+            Release.builder("octocat", "hello-world", "v1.0.0")
+            .name("First Release")
+            .body("Description of the release")
+            .build()
+        )
+        server.add_release("octocat", "hello-world", release)
+
+        url = f"{server.uri()}/repos/octocat/hello-world/releases"
+        with urllib.request.urlopen(url) as response:
+            assert response.status == 200
+            body = json.loads(response.read().decode())
+            assert len(body) == 1
+            assert body[0]["tag_name"] == "v1.0.0"
+            assert body[0]["name"] == "First Release"
+            assert body[0]["body"] == "Description of the release"

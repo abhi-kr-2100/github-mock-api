@@ -160,6 +160,78 @@ impl RepositoryBuilder {
     }
 }
 
+#[pyclass(module = "github_mock_api", from_py_object)]
+#[derive(Clone)]
+pub struct Release {
+    inner: ::github_mock_api::Release,
+}
+
+#[pymethods]
+impl Release {
+    #[staticmethod]
+    pub fn builder(owner: String, repo: String, tag_name: String) -> ReleaseBuilder {
+        ReleaseBuilder::new(owner, repo, tag_name)
+    }
+}
+
+#[pyclass(module = "github_mock_api", from_py_object)]
+#[derive(Clone)]
+pub struct ReleaseBuilder {
+    inner: ::github_mock_api::Release,
+}
+
+#[pymethods]
+impl ReleaseBuilder {
+    #[staticmethod]
+    pub fn new(owner: String, repo: String, tag_name: String) -> Self {
+        Self {
+            inner: ::github_mock_api::Release::new(&owner, &repo, &tag_name),
+        }
+    }
+
+    pub fn name(&self, name: String) -> Self {
+        let mut new = self.clone();
+        new.inner = new.inner.name(name);
+        new
+    }
+
+    pub fn body(&self, body: String) -> Self {
+        let mut new = self.clone();
+        new.inner = new.inner.body(body);
+        new
+    }
+
+    pub fn target_commitish(&self, commitish: String) -> Self {
+        let mut new = self.clone();
+        new.inner = new.inner.target_commitish(commitish);
+        new
+    }
+
+    pub fn draft(&self, draft: bool) -> Self {
+        let mut new = self.clone();
+        new.inner = new.inner.draft(draft);
+        new
+    }
+
+    pub fn prerelease(&self, prerelease: bool) -> Self {
+        let mut new = self.clone();
+        new.inner = new.inner.prerelease(prerelease);
+        new
+    }
+
+    pub fn created_at(&self, created_at: String) -> Self {
+        let mut new = self.clone();
+        new.inner = new.inner.created_at(created_at);
+        new
+    }
+
+    pub fn build(&self) -> Release {
+        Release {
+            inner: self.inner.clone(),
+        }
+    }
+}
+
 #[pyclass(module = "github_mock_api")]
 struct MockServer {
     server: Mutex<Option<RustMockServer>>,
@@ -242,6 +314,17 @@ impl MockServer {
             .block_on(server.add_repository(repository.inner));
         Ok(())
     }
+
+    fn add_release(&self, owner: String, repo: String, release: Release) -> PyResult<()> {
+        let lock = self.server.lock().map_err(|_| lock_error())?;
+        let server = lock
+            .as_ref()
+            .ok_or_else(|| PyErr::new::<PyRuntimeError, _>("server is stopped"))?;
+        runtime()
+            .map_err(runtime_error)?
+            .block_on(server.add_release(&owner, &repo, release.inner));
+        Ok(())
+    }
 }
 
 pub fn init_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
@@ -251,6 +334,8 @@ pub fn init_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<MockBehaviorBuilder>()?;
     m.add_class::<Repository>()?;
     m.add_class::<RepositoryBuilder>()?;
+    m.add_class::<Release>()?;
+    m.add_class::<ReleaseBuilder>()?;
     Ok(())
 }
 
