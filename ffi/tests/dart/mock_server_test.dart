@@ -171,5 +171,34 @@ void main() {
       expect(json['message'], equals('Not Found'));
       expect(json['documentation_url'], isA<String>());
     });
+
+    test('can add and retrieve a repository', () async {
+      final server = MockServer.start();
+      addTearDown(server.stop);
+      final uri = server.uri();
+
+      final repo = Repository.new_('octocat', 'hello-world')
+          .withDescription('A test repository')
+          .withPrivate(true)
+          .withStargazersCount(42)
+          .withDefaultBranch('develop');
+
+      server.addRepository(repo);
+
+      final client = HttpClient();
+      addTearDown(client.close);
+      final request = await client.getUrl(Uri.parse('$uri/repos/octocat/hello-world'));
+      final response = await request.close();
+      final body = await response.transform(utf8.decoder).join();
+
+      expect(response.statusCode, equals(200));
+      final json = jsonDecode(body) as Map<String, dynamic>;
+      expect(json['name'], equals('hello-world'));
+      expect(json['owner']['login'], equals('octocat'));
+      expect(json['description'], equals('A test repository'));
+      expect(json['private'], isTrue);
+      expect(json['stargazers_count'], equals(42));
+      expect(json['default_branch'], equals('develop'));
+    });
   });
 }

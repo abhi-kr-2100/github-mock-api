@@ -4,6 +4,7 @@
 
 #include "github_mock_api/MockServer.h"
 #include "github_mock_api/MockBehavior.h"
+#include "github_mock_api/Repository.h"
 #include "github_mock_api/diplomat_runtime.h"
 
 #define URI_PREFIX "http://127.0.0.1:"
@@ -217,6 +218,61 @@ START_TEST(test_start_after_stop) {
 }
 END_TEST
 
+START_TEST(test_add_repository) {
+    MockServer_start_result started = MockServer_start();
+    ck_assert(started.is_ok);
+    MockServer *server = started.ok;
+
+    Repository *repo_builder = Repository_new(DS("octocat"), DS("hello-world"));
+    Repository *repo = Repository_with_description(repo_builder, DS("A test repository"));
+    Repository_destroy(repo_builder);
+
+    Repository *repo2 = Repository_with_private(repo, true);
+    Repository *repo3 = Repository_with_stargazers_count(repo2, 42);
+    Repository *repo4 = Repository_with_default_branch(repo3, DS("develop"));
+
+    MockServer_add_repository_result res = MockServer_add_repository(server, repo4);
+    ck_assert(res.is_ok);
+
+    Repository_destroy(repo);
+    Repository_destroy(repo2);
+    Repository_destroy(repo3);
+    Repository_destroy(repo4);
+
+    MockServer_stop_result stopped = MockServer_stop(server);
+    ck_assert(stopped.is_ok);
+    MockServer_destroy(server);
+}
+END_TEST
+
+START_TEST(test_repository_e2e) {
+    MockServer_start_result started = MockServer_start();
+    ck_assert(started.is_ok);
+    MockServer *server = started.ok;
+
+    Repository *repo = Repository_new(DS("octocat"), DS("hello-world"));
+    MockServer_add_repository_result res = MockServer_add_repository(server, repo);
+    ck_assert(res.is_ok);
+
+    DiplomatWrite *write = diplomat_buffer_write_create(64);
+    MockServer_uri(server, write);
+    const char *base_uri = (const char *)diplomat_buffer_write_get_bytes(write);
+    size_t base_uri_len = diplomat_buffer_write_len(write);
+
+    char curl_cmd[256];
+    snprintf(curl_cmd, sizeof(curl_cmd), "curl -s -f %.*s/repos/octocat/hello-world > /dev/null", (int)base_uri_len, base_uri);
+
+    int curl_res = system(curl_cmd);
+    ck_assert_int_eq(curl_res, 0);
+
+    diplomat_buffer_write_destroy(write);
+    Repository_destroy(repo);
+    MockServer_stop_result stopped = MockServer_stop(server);
+    ck_assert(stopped.is_ok);
+    MockServer_destroy(server);
+}
+END_TEST
+
 Suite *mock_server_suite(void) {
     Suite *s = suite_create("MockServer");
     TCase *tc_core = tcase_create("Core");
@@ -230,6 +286,8 @@ Suite *mock_server_suite(void) {
     tcase_add_test(tc_core, test_mock_behavior_conflict);
     tcase_add_test(tc_core, test_mock_behavior_immutable_builder);
     tcase_add_test(tc_core, test_start_after_stop);
+    tcase_add_test(tc_core, test_add_repository);
+    tcase_add_test(tc_core, test_repository_e2e);
 
     suite_add_tcase(s, tc_core);
     return s;
