@@ -7,9 +7,10 @@
 #include <unistd.h>
 
 #define CATCH_CONFIG_MAIN
-#include <catch2/catch.hpp>
+#include "external/catch.hpp"
 
 #include "github_mock_api/MockServer.hpp"
+#include "github_mock_api/Repository.hpp"
 
 using namespace github_mock_api_ffi;
 
@@ -163,4 +164,31 @@ TEST_CASE("MockServer is not reachable after stop", "[mock_server][network]") {
     REQUIRE(server->stop().is_ok());
 
     CHECK(connect_to(host, port) < 0);
+}
+
+TEST_CASE("MockServer can add a repository", "[mock_server]") {
+    auto server = MockServer::start().ok().value();
+
+    auto repo = Repository::new_("octocat", "hello-world").ok().value();
+    auto repo2 = repo->with_description("A test repository").ok().value();
+    auto repo3 = repo2->with_private(true);
+    auto repo4 = repo3->with_stargazers_count(42);
+    auto repo5 = repo4->with_default_branch("develop").ok().value();
+
+    auto add_result = server->add_repository(*repo5);
+    CHECK(add_result.is_ok());
+}
+
+TEST_CASE("MockServer serves added repository", "[mock_server][network]") {
+    auto server = MockServer::start().ok().value();
+
+    auto repo = Repository::new_("octocat", "hello-world").ok().value();
+
+    auto add_result = server->add_repository(*repo);
+    REQUIRE(add_result.is_ok());
+
+    auto uri = server->uri() + "/repos/octocat/hello-world";
+    std::string cmd = "curl -s -f " + uri + " > /dev/null";
+
+    CHECK(system(cmd.c_str()) == 0);
 }

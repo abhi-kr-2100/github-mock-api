@@ -3,7 +3,7 @@ mod ffi {
     use std::fmt::Write as _;
 
     use diplomat_runtime::DiplomatWrite;
-    use github_mock_api::{Error, MockServer as RustMockServer};
+    use github_mock_api::{Error, MockServer as RustMockServer, Repository as RustRepository};
 
     use github_mock_api_ffi_common::{CommonError, parse_host, runtime};
 
@@ -48,6 +48,54 @@ mod ffi {
                 builder = builder.error(error.into());
             }
             builder.build()
+        }
+    }
+
+    #[diplomat::rust_link(github_mock_api::Repository, Struct)]
+    #[diplomat::opaque]
+    #[derive(Clone)]
+    pub struct Repository {
+        pub(crate) inner: RustRepository,
+    }
+
+    impl Repository {
+        /// Create a new repository builder.
+        pub fn new(owner: &str, name: &str) -> Box<Repository> {
+            Box::new(Repository {
+                inner: RustRepository::new(owner, name),
+            })
+        }
+
+        /// Set the description for the repository.
+        pub fn with_description(&self, description: &str) -> Box<Repository> {
+            let mut new = self.clone();
+            new.inner = new.inner.description(description);
+            Box::new(new)
+        }
+
+        /// Set whether the repository is private.
+        pub fn with_private(&self, private: bool) -> Box<Repository> {
+            let mut new = self.clone();
+            new.inner = new.inner.private(private);
+            Box::new(new)
+        }
+
+        /// Set the stargazers count for the repository.
+        pub fn with_stargazers_count(&self, count: u64) -> Box<Repository> {
+            let mut new = self.clone();
+            new.inner = new.inner.stargazers_count(count);
+            Box::new(new)
+        }
+
+        /// Set the default branch for the repository.
+        pub fn with_default_branch(&self, branch: &str) -> Box<Repository> {
+            let mut new = self.clone();
+            new.inner = new.inner.default_branch(branch);
+            Box::new(new)
+        }
+
+        pub(crate) fn build(&self) -> RustRepository {
+            self.inner.clone()
         }
     }
 
@@ -131,6 +179,14 @@ mod ffi {
         /// Clear all mock behaviors from the server.
         pub fn clear_all_mock_behaviors(&self) -> Result<(), MockServerError> {
             runtime()?.block_on(self.server.clear_all_mock_behaviors());
+            Ok(())
+        }
+
+        /// Add a repository to the server.
+        pub fn add_repository(&self, repository: &Repository) -> Result<(), MockServerError> {
+            // Note: Rust add_repository is currently infallible, but we return a Result
+            // to match other registration methods and for future compatibility.
+            runtime()?.block_on(self.server.add_repository(repository.build()));
             Ok(())
         }
     }
