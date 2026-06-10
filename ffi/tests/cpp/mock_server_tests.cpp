@@ -11,6 +11,7 @@
 
 #include "github_mock_api/MockServer.hpp"
 #include "github_mock_api/Repository.hpp"
+#include "github_mock_api/Release.hpp"
 
 using namespace github_mock_api_ffi;
 
@@ -188,6 +189,34 @@ TEST_CASE("MockServer serves added repository", "[mock_server][network]") {
     REQUIRE(add_result.is_ok());
 
     auto uri = server->uri() + "/repos/octocat/hello-world";
+    std::string cmd = "curl -s -f " + uri + " > /dev/null";
+
+    CHECK(system(cmd.c_str()) == 0);
+}
+
+TEST_CASE("MockServer can add a release", "[mock_server]") {
+    auto server = MockServer::start().ok().value();
+
+    auto release = Release::new_("octocat", "hello-world", "v1.0.0").ok().value();
+    auto release2 = release->with_name("Version 1.0.0").ok().value();
+    auto release3 = release2->with_body("Initial release").ok().value();
+    auto release4 = release3->with_target_commitish("main").ok().value();
+    auto release5 = release4->with_draft(false);
+    auto release6 = release5->with_prerelease(false);
+
+    auto add_result = server->add_release(*release6);
+    CHECK(add_result.is_ok());
+}
+
+TEST_CASE("MockServer serves added release", "[mock_server][network]") {
+    auto server = MockServer::start().ok().value();
+
+    auto release = Release::new_("octocat", "hello-world", "v1.0.0").ok().value();
+
+    auto add_result = server->add_release(*release);
+    REQUIRE(add_result.is_ok());
+
+    auto uri = server->uri() + "/repos/octocat/hello-world/releases/tags/v1.0.0";
     std::string cmd = "curl -s -f " + uri + " > /dev/null";
 
     CHECK(system(cmd.c_str()) == 0);

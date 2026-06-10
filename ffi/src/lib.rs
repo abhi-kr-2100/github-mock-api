@@ -3,7 +3,9 @@ mod ffi {
     use std::fmt::Write as _;
 
     use diplomat_runtime::DiplomatWrite;
-    use github_mock_api::{Error, MockServer as RustMockServer, Repository as RustRepository};
+    use github_mock_api::{
+        Error, MockServer as RustMockServer, Release as RustRelease, Repository as RustRepository,
+    };
 
     use github_mock_api_ffi_common::{CommonError, parse_host, runtime};
 
@@ -99,6 +101,65 @@ mod ffi {
         }
     }
 
+    #[diplomat::rust_link(github_mock_api::Release, Struct)]
+    #[diplomat::opaque]
+    #[derive(Clone)]
+    pub struct Release {
+        pub(crate) inner: RustRelease,
+        pub(crate) owner: String,
+        pub(crate) repo: String,
+    }
+
+    impl Release {
+        /// Create a new release builder.
+        pub fn new(owner: &str, repo: &str, tag_name: &str) -> Box<Release> {
+            Box::new(Release {
+                inner: RustRelease::new(owner, repo, tag_name),
+                owner: owner.to_string(),
+                repo: repo.to_string(),
+            })
+        }
+
+        /// Set the name for the release.
+        pub fn with_name(&self, name: &str) -> Box<Release> {
+            let mut new = self.clone();
+            new.inner = new.inner.name(name);
+            Box::new(new)
+        }
+
+        /// Set the body for the release.
+        pub fn with_body(&self, body: &str) -> Box<Release> {
+            let mut new = self.clone();
+            new.inner = new.inner.body(body);
+            Box::new(new)
+        }
+
+        /// Set the target commitish for the release.
+        pub fn with_target_commitish(&self, commitish: &str) -> Box<Release> {
+            let mut new = self.clone();
+            new.inner = new.inner.target_commitish(commitish);
+            Box::new(new)
+        }
+
+        /// Set whether the release is a draft.
+        pub fn with_draft(&self, draft: bool) -> Box<Release> {
+            let mut new = self.clone();
+            new.inner = new.inner.draft(draft);
+            Box::new(new)
+        }
+
+        /// Set whether the release is a prerelease.
+        pub fn with_prerelease(&self, prerelease: bool) -> Box<Release> {
+            let mut new = self.clone();
+            new.inner = new.inner.prerelease(prerelease);
+            Box::new(new)
+        }
+
+        pub(crate) fn build(&self) -> RustRelease {
+            self.inner.clone()
+        }
+    }
+
     #[diplomat::rust_link(github_mock_api::MockServer, Struct)]
     #[diplomat::opaque_mut]
     pub struct MockServer {
@@ -187,6 +248,15 @@ mod ffi {
             // Note: Rust add_repository is currently infallible, but we return a Result
             // to match other registration methods and for future compatibility.
             runtime()?.block_on(self.server.add_repository(repository.build()));
+            Ok(())
+        }
+
+        /// Add a release to the server.
+        pub fn add_release(&self, release: &Release) -> Result<(), MockServerError> {
+            let rust_release = release.build();
+            let owner = release.owner.clone();
+            let repo = release.repo.clone();
+            runtime()?.block_on(self.server.add_release(&owner, &repo, rust_release));
             Ok(())
         }
     }
