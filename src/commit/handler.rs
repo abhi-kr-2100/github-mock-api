@@ -4,7 +4,7 @@ use crate::api::{ApiError, ApiResponse};
 pub async fn list_commits(
     owner: String,
     repo: String,
-    pagination: crate::util::Pagination,
+    pagination: crate::pagination::Pagination,
     state: crate::AppState,
 ) -> ApiResponse<Vec<Commit>> {
     let key = (owner.to_lowercase(), repo.to_lowercase());
@@ -15,7 +15,7 @@ pub async fn list_commits(
         .get(&key)
         .cloned()
         .unwrap_or_default();
-    let (paginated_commits, metadata) = crate::util::paginate(&commits, pagination);
+    let (paginated_commits, metadata) = crate::pagination::paginate(&commits, pagination);
     ApiResponse::Paginated(paginated_commits, metadata)
 }
 

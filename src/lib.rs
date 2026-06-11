@@ -31,6 +31,7 @@ mod api;
 mod asset;
 mod behavior;
 mod commit;
+mod pagination;
 mod release;
 mod repository;
 mod util;
@@ -163,7 +164,7 @@ async fn handle_paginated_response(
     let mut response = response.into_response();
     let metadata = response
         .extensions()
-        .get::<crate::util::PaginationMetadata>()
+        .get::<crate::pagination::PaginationMetadata>()
         .cloned();
 
     if let Some(metadata) = metadata
