@@ -1,7 +1,7 @@
 use crate::AppState;
 use crate::api::{ApiError, ApiResponse};
+use crate::pagination::Pagination;
 use crate::release::types::Release;
-use crate::util::Pagination;
 
 pub async fn list_releases(
     owner: String,
@@ -21,7 +21,7 @@ pub async fn list_releases(
     // Sort by created_at descending (latest first)
     releases.sort_by(|a, b| b.created_at.cmp(&a.created_at));
 
-    let (paginated_releases, metadata) = crate::util::paginate(&releases, pagination);
+    let (paginated_releases, metadata) = crate::pagination::paginate(&releases, pagination);
     ApiResponse::Paginated(paginated_releases, metadata)
 }
 

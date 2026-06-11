@@ -5,7 +5,7 @@ use serde::Serialize;
 
 pub enum ApiResponse<T> {
     Ok(T),
-    Paginated(T, crate::util::PaginationMetadata),
+    Paginated(T, crate::pagination::PaginationMetadata),
     Error(ApiError),
     Raw {
         bytes: Vec<u8>,
