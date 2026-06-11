@@ -19,7 +19,7 @@ impl Repository {
             fork: false,
             url: base.clone(),
             archive_url: format!("{base}/{{archive_format}}{{/ref}}"),
-            assignees_url: format!("{base}/assignees{{/assignee}}"),
+            assignees_url: format!("{base}/assignees{{/user}}"),
             blobs_url: format!("{base}/git/blobs{{/sha}}"),
             branches_url: format!("{base}/branches{{/branch}}"),
             collaborators_url: format!("{base}/collaborators{{/collaborator}}"),
@@ -133,6 +133,10 @@ mod tests {
         assert_eq!(repo.default_branch, "main");
         assert_eq!(repo.stargazers_count, 0);
         assert!(repo.description.is_none());
+        assert_eq!(
+            repo.assignees_url,
+            "https://api.github.com/repos/octocat/hello-world/assignees{/user}"
+        );
     }
 
     #[test]
