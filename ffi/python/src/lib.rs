@@ -232,6 +232,66 @@ impl ReleaseBuilder {
     }
 }
 
+#[pyclass(module = "github_mock_api", from_py_object)]
+#[derive(Clone)]
+pub struct Commit {
+    inner: ::github_mock_api::Commit,
+}
+
+#[pymethods]
+impl Commit {
+    #[staticmethod]
+    pub fn builder(owner: String, repo: String) -> CommitBuilder {
+        CommitBuilder::new(owner, repo)
+    }
+}
+
+#[pyclass(module = "github_mock_api", from_py_object)]
+#[derive(Clone)]
+pub struct CommitBuilder {
+    inner: ::github_mock_api::Commit,
+}
+
+#[pymethods]
+impl CommitBuilder {
+    #[staticmethod]
+    pub fn new(owner: String, repo: String) -> Self {
+        Self {
+            inner: ::github_mock_api::Commit::new(&owner, &repo),
+        }
+    }
+
+    pub fn sha(&self, sha: String) -> Self {
+        let mut new = self.clone();
+        new.inner = new.inner.sha(sha);
+        new
+    }
+
+    pub fn message(&self, message: String) -> Self {
+        let mut new = self.clone();
+        new.inner = new.inner.message(message);
+        new
+    }
+
+    pub fn author_name(&self, name: String) -> Self {
+        let mut new = self.clone();
+        new.inner = new.inner.author_name(name);
+        new
+    }
+
+    pub fn author_email(&self, email: String) -> Self {
+        let mut new = self.clone();
+        new.inner = new.inner.author_email(email);
+        new
+    }
+
+    pub fn build(&self) -> Commit {
+        Commit {
+            inner: self.inner.clone(),
+        }
+    }
+}
+
 #[pyclass(module = "github_mock_api")]
 struct MockServer {
     server: Mutex<Option<RustMockServer>>,
@@ -325,6 +385,17 @@ impl MockServer {
             .block_on(server.add_release(&owner, &repo, release.inner));
         Ok(())
     }
+
+    fn add_commit(&self, owner: String, repo: String, commit: Commit) -> PyResult<()> {
+        let lock = self.server.lock().map_err(|_| lock_error())?;
+        let server = lock
+            .as_ref()
+            .ok_or_else(|| PyErr::new::<PyRuntimeError, _>("server is stopped"))?;
+        runtime()
+            .map_err(runtime_error)?
+            .block_on(server.add_commit(&owner, &repo, commit.inner));
+        Ok(())
+    }
 }
 
 pub fn init_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
@@ -336,6 +407,8 @@ pub fn init_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<RepositoryBuilder>()?;
     m.add_class::<Release>()?;
     m.add_class::<ReleaseBuilder>()?;
+    m.add_class::<Commit>()?;
+    m.add_class::<CommitBuilder>()?;
     Ok(())
 }
 
