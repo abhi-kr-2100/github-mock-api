@@ -2,7 +2,7 @@ use std::sync::Mutex;
 
 use github_mock_api::{
     Error as MockApiError, MockBehavior as RustMockBehavior, MockError,
-    MockServer as RustMockServer, Repository as RustRepository,
+    MockServer as RustMockServer, Release as RustRelease, Repository as RustRepository,
 };
 use github_mock_api_ffi_common::{CommonError, parse_host, runtime};
 use magnus::{Error, IntoValue, Ruby, function, method, prelude::*, wrap};
@@ -101,6 +101,83 @@ impl Repository {
     ) -> Result<magnus::Value, Error> {
         let mut inner = rb_self.inner.lock().map_err(|_| lock_error(ruby))?;
         *inner = inner.clone().default_branch(branch);
+        Ok(rb_self.into_value_with(ruby))
+    }
+}
+
+#[wrap(class = "GitHubMockAPI::Release", free_immediately, size)]
+struct Release {
+    inner: Mutex<RustRelease>,
+    owner: String,
+    repo: String,
+}
+
+impl Release {
+    fn new(owner: String, repo: String, tag_name: String) -> Self {
+        Self {
+            inner: Mutex::new(RustRelease::new(&owner, &repo, &tag_name)),
+            owner,
+            repo,
+        }
+    }
+
+    fn name(
+        ruby: &Ruby,
+        rb_self: magnus::typed_data::Obj<Self>,
+        name: String,
+    ) -> Result<magnus::Value, Error> {
+        let mut inner = rb_self.inner.lock().map_err(|_| lock_error(ruby))?;
+        *inner = inner.clone().name(name);
+        Ok(rb_self.into_value_with(ruby))
+    }
+
+    fn body(
+        ruby: &Ruby,
+        rb_self: magnus::typed_data::Obj<Self>,
+        body: String,
+    ) -> Result<magnus::Value, Error> {
+        let mut inner = rb_self.inner.lock().map_err(|_| lock_error(ruby))?;
+        *inner = inner.clone().body(body);
+        Ok(rb_self.into_value_with(ruby))
+    }
+
+    fn target_commitish(
+        ruby: &Ruby,
+        rb_self: magnus::typed_data::Obj<Self>,
+        commitish: String,
+    ) -> Result<magnus::Value, Error> {
+        let mut inner = rb_self.inner.lock().map_err(|_| lock_error(ruby))?;
+        *inner = inner.clone().target_commitish(commitish);
+        Ok(rb_self.into_value_with(ruby))
+    }
+
+    fn draft(
+        ruby: &Ruby,
+        rb_self: magnus::typed_data::Obj<Self>,
+        draft: bool,
+    ) -> Result<magnus::Value, Error> {
+        let mut inner = rb_self.inner.lock().map_err(|_| lock_error(ruby))?;
+        *inner = inner.clone().draft(draft);
+        Ok(rb_self.into_value_with(ruby))
+    }
+
+    fn prerelease(
+        ruby: &Ruby,
+        rb_self: magnus::typed_data::Obj<Self>,
+        prerelease: bool,
+    ) -> Result<magnus::Value, Error> {
+        let mut inner = rb_self.inner.lock().map_err(|_| lock_error(ruby))?;
+        *inner = inner.clone().prerelease(prerelease);
+        Ok(rb_self.into_value_with(ruby))
+    }
+
+    fn created_at(
+        ruby: &Ruby,
+        rb_self: magnus::typed_data::Obj<Self>,
+        created_at: String,
+    ) -> Result<magnus::Value, Error> {
+        let mut inner = rb_self.inner.lock().map_err(|_| lock_error(ruby))?;
+        *inner = inner.clone().created_at(created_at);
         Ok(rb_self.into_value_with(ruby))
     }
 }
@@ -222,6 +299,18 @@ impl MockServer {
         Ok(())
     }
 
+    fn add_release(ruby: &Ruby, rb_self: &Self, release: &Release) -> Result<(), Error> {
+        let mut lock = rb_self.server.lock().map_err(|_| lock_error(ruby))?;
+        let server = lock.as_mut().ok_or_else(|| server_stopped_error(ruby))?;
+
+        let release_inner = release.inner.lock().map_err(|_| lock_error(ruby))?.clone();
+
+        runtime()
+            .map_err(|err| runtime_error(ruby, err))?
+            .block_on(server.add_release(&release.owner, &release.repo, release_inner));
+        Ok(())
+    }
+
     fn clear_all_mock_behaviors(ruby: &Ruby, rb_self: &Self) -> Result<(), Error> {
         let mut lock = rb_self.server.lock().map_err(|_| lock_error(ruby))?;
         let server = lock.as_mut().ok_or_else(|| server_stopped_error(ruby))?;
@@ -248,6 +337,15 @@ pub fn init(ruby: &Ruby) -> Result<(), Error> {
     repository_class.define_method("stargazers_count", method!(Repository::stargazers_count, 1))?;
     repository_class.define_method("default_branch", method!(Repository::default_branch, 1))?;
 
+    let release_class = module.define_class("Release", ruby.class_object())?;
+    release_class.define_singleton_method("new", function!(Release::new, 3))?;
+    release_class.define_method("name", method!(Release::name, 1))?;
+    release_class.define_method("body", method!(Release::body, 1))?;
+    release_class.define_method("target_commitish", method!(Release::target_commitish, 1))?;
+    release_class.define_method("draft", method!(Release::draft, 1))?;
+    release_class.define_method("prerelease", method!(Release::prerelease, 1))?;
+    release_class.define_method("created_at", method!(Release::created_at, 1))?;
+
     let behavior_class = module.define_class("MockBehavior", ruby.class_object())?;
     behavior_class.define_singleton_method("new", function!(MockBehavior::new, 0))?;
     behavior_class.define_method("error", method!(MockBehavior::error, 1))?;
@@ -262,6 +360,7 @@ pub fn init(ruby: &Ruby) -> Result<(), Error> {
         method!(MockServer::add_mock_behavior, 1),
     )?;
     class.define_method("add_repository", method!(MockServer::add_repository, 1))?;
+    class.define_method("add_release", method!(MockServer::add_release, 1))?;
     class.define_method(
         "clear_all_mock_behaviors",
         method!(MockServer::clear_all_mock_behaviors, 0),
