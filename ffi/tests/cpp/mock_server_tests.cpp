@@ -7,7 +7,7 @@
 #include <unistd.h>
 
 #define CATCH_CONFIG_MAIN
-#include "external/catch.hpp"
+#include <catch2/catch.hpp>
 
 #include "github_mock_api/MockServer.hpp"
 #include "github_mock_api/Repository.hpp"
