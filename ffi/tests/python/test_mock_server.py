@@ -5,7 +5,7 @@ import urllib.error
 import urllib.request
 
 import pytest
-from github_mock_api import MockServer, MockBehavior, MockError, Repository, Release
+from github_mock_api import MockServer, MockBehavior, MockError, Repository, Release, Commit
 
 
 class TestMockServer:
@@ -133,3 +133,24 @@ class TestMockServer:
             assert body[0]["tag_name"] == "v1.0.0"
             assert body[0]["name"] == "First Release"
             assert body[0]["body"] == "Description of the release"
+
+    def test_add_commit(self, server: MockServer) -> None:
+        commit = (
+            Commit.builder("octocat", "hello-world")
+            .sha("1234567890abcdef1234567890abcdef12345678")
+            .message("Initial commit")
+            .author_name("Mona Octocat")
+            .author_email("mona@github.com")
+            .build()
+        )
+        server.add_commit("octocat", "hello-world", commit)
+
+        url = f"{server.uri()}/repos/octocat/hello-world/commits"
+        with urllib.request.urlopen(url) as response:
+            assert response.status == 200
+            body = json.loads(response.read().decode())
+            assert len(body) == 1
+            assert body[0]["sha"] == "1234567890abcdef1234567890abcdef12345678"
+            assert body[0]["commit"]["message"] == "Initial commit"
+            assert body[0]["commit"]["author"]["name"] == "Mona Octocat"
+            assert body[0]["commit"]["author"]["email"] == "mona@github.com"
