@@ -6,8 +6,7 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 
-#define CATCH_CONFIG_MAIN
-#include <catch2/catch.hpp>
+#include <catch2/catch_test_macros.hpp>
 
 #include "github_mock_api/MockServer.hpp"
 #include "github_mock_api/Repository.hpp"

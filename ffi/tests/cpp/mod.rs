@@ -39,6 +39,24 @@ fn compile(compiler: &str, source: &Path, binary: &Path) -> Result<Command, Test
         .arg("-I")
         .arg(include)
         .arg(source);
+
+    // Add Catch2 flags
+    let catch2_flags = Command::new("pkg-config")
+        .arg("--cflags")
+        .arg("--libs")
+        .arg("catch2-with-main")
+        .output()
+        .map_err(|_| TestError::Catch2NotFound)?;
+
+    if !catch2_flags.status.success() {
+        return Err(TestError::Catch2NotFound);
+    }
+
+    let flags = String::from_utf8_lossy(&catch2_flags.stdout);
+    for flag in flags.split_whitespace() {
+        cmd.arg(flag);
+    }
+
     for arg in lib_dir_args(&lib_dirs) {
         cmd.arg(arg);
     }

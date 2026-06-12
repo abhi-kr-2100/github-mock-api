@@ -27,6 +27,9 @@ pub(crate) enum TestError {
     #[error("pkg-config required to find check unit test framework")]
     NoPkgConfig,
 
+    #[error("pkg-config required to find catch2-with-main")]
+    Catch2NotFound,
+
     #[error("run C unit test binary")]
     RunCTest,
 
