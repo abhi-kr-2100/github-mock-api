@@ -4,8 +4,8 @@ mod ffi {
 
     use diplomat_runtime::DiplomatWrite;
     use github_mock_api::{
-        Commit as RustCommit, Error, MockServer as RustMockServer, Release as RustRelease,
-        Repository as RustRepository,
+        Asset as RustAsset, Commit as RustCommit, Error, MockServer as RustMockServer,
+        Release as RustRelease, Repository as RustRepository,
     };
 
     use github_mock_api_ffi_common::{CommonError, parse_host, runtime};
@@ -59,6 +59,33 @@ mod ffi {
     #[derive(Clone)]
     pub struct Repository {
         pub(crate) inner: RustRepository,
+    }
+
+    #[diplomat::rust_link(github_mock_api::Asset, Struct)]
+    #[diplomat::opaque]
+    #[derive(Clone)]
+    pub struct Asset {
+        pub(crate) inner: RustAsset,
+    }
+
+    impl Asset {
+        /// Create a new asset from bytes.
+        pub fn from_bytes(name: &str, bytes: &[u8], content_type: &str) -> Box<Asset> {
+            Box::new(Asset {
+                inner: RustAsset::from_bytes(name, bytes.to_vec(), content_type),
+            })
+        }
+
+        /// Create a new asset from a file path.
+        pub fn from_file(name: &str, path: &str, content_type: &str) -> Box<Asset> {
+            Box::new(Asset {
+                inner: RustAsset::from_path(name, path, content_type),
+            })
+        }
+
+        pub(crate) fn build(&self) -> RustAsset {
+            self.inner.clone()
+        }
     }
 
     impl Repository {
@@ -319,6 +346,19 @@ mod ffi {
             let owner = commit.owner.clone();
             let repo = commit.repo.clone();
             runtime()?.block_on(self.server.add_commit(&owner, &repo, rust_commit));
+            Ok(())
+        }
+
+        /// Add an asset to the server.
+        pub fn add_asset(
+            &self,
+            owner: &str,
+            repo: &str,
+            tag: &str,
+            asset: &Asset,
+        ) -> Result<(), MockServerError> {
+            let rust_asset = asset.build();
+            runtime()?.block_on(self.server.add_asset(owner, repo, tag, rust_asset));
             Ok(())
         }
     }

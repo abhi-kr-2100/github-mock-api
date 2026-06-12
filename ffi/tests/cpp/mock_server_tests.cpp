@@ -12,6 +12,7 @@
 #include "github_mock_api/Repository.hpp"
 #include "github_mock_api/Release.hpp"
 #include "github_mock_api/Commit.hpp"
+#include "github_mock_api/Asset.hpp"
 
 using namespace github_mock_api_ffi;
 
@@ -190,6 +191,25 @@ TEST_CASE("MockServer serves added repository", "[mock_server][network]") {
 
     auto uri = server->uri() + "/repos/octocat/hello-world";
     std::string cmd = "curl -s -f " + uri + " > /dev/null";
+
+    CHECK(system(cmd.c_str()) == 0);
+}
+
+TEST_CASE("MockServer can add and serve an asset", "[mock_server][network]") {
+    auto server = MockServer::start().ok().value();
+
+    std::string content = "hello world";
+    auto asset = Asset::from_bytes("test.txt",
+                                   {reinterpret_cast<const uint8_t*>(content.data()), content.size()},
+                                   "text/plain")
+                     .ok()
+                     .value();
+
+    auto add_result = server->add_asset("octocat", "hello-world", "v1.0.0", *asset);
+    REQUIRE(add_result.is_ok());
+
+    auto uri = server->uri() + "/octocat/hello-world/releases/download/v1.0.0/test.txt";
+    std::string cmd = "curl -s -f " + uri + " | grep -q \"hello world\"";
 
     CHECK(system(cmd.c_str()) == 0);
 }
