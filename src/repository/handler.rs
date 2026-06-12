@@ -28,7 +28,9 @@ mod tests {
         let server = MockServer::start().await?;
         let repo = Repository::new("octocat", "hello-world")
             .description("A test repository")
-            .stargazers_count(42);
+            .stargazers_count(42)
+            .subscribers_count(10)
+            .network_count(5);
         server.add_repository(repo).await;
 
         let client = reqwest::Client::new();
@@ -49,6 +51,8 @@ mod tests {
         assert_eq!(body["stargazers_count"], 42);
         assert_eq!(body["watchers_count"], 42);
         assert_eq!(body["watchers"], 42);
+        assert_eq!(body["subscribers_count"], 10);
+        assert_eq!(body["network_count"], 5);
         assert_eq!(body["forks_count"], 0);
         assert_eq!(body["forks"], 0);
         assert_eq!(body["open_issues_count"], 0);
