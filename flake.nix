@@ -15,7 +15,7 @@
         packages = with pkgs; [
           cargo
           cargo-llvm-cov
-          catch2
+          catch2_3
           check
           clang
           clippy
