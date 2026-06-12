@@ -1,7 +1,7 @@
 use std::sync::Mutex;
 
 use github_mock_api::{
-    Error as MockApiError, MockBehavior as RustMockBehavior, MockError,
+    Commit as RustCommit, Error as MockApiError, MockBehavior as RustMockBehavior, MockError,
     MockServer as RustMockServer, Release as RustRelease, Repository as RustRepository,
 };
 use github_mock_api_ffi_common::{CommonError, parse_host, runtime};
@@ -101,6 +101,63 @@ impl Repository {
     ) -> Result<magnus::Value, Error> {
         let mut inner = rb_self.inner.lock().map_err(|_| lock_error(ruby))?;
         *inner = inner.clone().default_branch(branch);
+        Ok(rb_self.into_value_with(ruby))
+    }
+}
+
+#[wrap(class = "GitHubMockAPI::Commit", free_immediately, size)]
+struct Commit {
+    inner: Mutex<RustCommit>,
+    owner: String,
+    repo: String,
+}
+
+impl Commit {
+    fn new(owner: String, repo: String) -> Self {
+        Self {
+            inner: Mutex::new(RustCommit::new(&owner, &repo)),
+            owner,
+            repo,
+        }
+    }
+
+    fn sha(
+        ruby: &Ruby,
+        rb_self: magnus::typed_data::Obj<Self>,
+        sha: String,
+    ) -> Result<magnus::Value, Error> {
+        let mut inner = rb_self.inner.lock().map_err(|_| lock_error(ruby))?;
+        *inner = inner.clone().sha(sha);
+        Ok(rb_self.into_value_with(ruby))
+    }
+
+    fn message(
+        ruby: &Ruby,
+        rb_self: magnus::typed_data::Obj<Self>,
+        message: String,
+    ) -> Result<magnus::Value, Error> {
+        let mut inner = rb_self.inner.lock().map_err(|_| lock_error(ruby))?;
+        *inner = inner.clone().message(message);
+        Ok(rb_self.into_value_with(ruby))
+    }
+
+    fn author_name(
+        ruby: &Ruby,
+        rb_self: magnus::typed_data::Obj<Self>,
+        name: String,
+    ) -> Result<magnus::Value, Error> {
+        let mut inner = rb_self.inner.lock().map_err(|_| lock_error(ruby))?;
+        *inner = inner.clone().author_name(name);
+        Ok(rb_self.into_value_with(ruby))
+    }
+
+    fn author_email(
+        ruby: &Ruby,
+        rb_self: magnus::typed_data::Obj<Self>,
+        email: String,
+    ) -> Result<magnus::Value, Error> {
+        let mut inner = rb_self.inner.lock().map_err(|_| lock_error(ruby))?;
+        *inner = inner.clone().author_email(email);
         Ok(rb_self.into_value_with(ruby))
     }
 }
@@ -311,6 +368,18 @@ impl MockServer {
         Ok(())
     }
 
+    fn add_commit(ruby: &Ruby, rb_self: &Self, commit: &Commit) -> Result<(), Error> {
+        let mut lock = rb_self.server.lock().map_err(|_| lock_error(ruby))?;
+        let server = lock.as_mut().ok_or_else(|| server_stopped_error(ruby))?;
+
+        let commit_inner = commit.inner.lock().map_err(|_| lock_error(ruby))?.clone();
+
+        runtime()
+            .map_err(|err| runtime_error(ruby, err))?
+            .block_on(server.add_commit(&commit.owner, &commit.repo, commit_inner));
+        Ok(())
+    }
+
     fn clear_all_mock_behaviors(ruby: &Ruby, rb_self: &Self) -> Result<(), Error> {
         let mut lock = rb_self.server.lock().map_err(|_| lock_error(ruby))?;
         let server = lock.as_mut().ok_or_else(|| server_stopped_error(ruby))?;
@@ -337,6 +406,13 @@ pub fn init(ruby: &Ruby) -> Result<(), Error> {
     repository_class.define_method("stargazers_count", method!(Repository::stargazers_count, 1))?;
     repository_class.define_method("default_branch", method!(Repository::default_branch, 1))?;
 
+    let commit_class = module.define_class("Commit", ruby.class_object())?;
+    commit_class.define_singleton_method("new", function!(Commit::new, 2))?;
+    commit_class.define_method("sha", method!(Commit::sha, 1))?;
+    commit_class.define_method("message", method!(Commit::message, 1))?;
+    commit_class.define_method("author_name", method!(Commit::author_name, 1))?;
+    commit_class.define_method("author_email", method!(Commit::author_email, 1))?;
+
     let release_class = module.define_class("Release", ruby.class_object())?;
     release_class.define_singleton_method("new", function!(Release::new, 3))?;
     release_class.define_method("name", method!(Release::name, 1))?;
@@ -361,6 +437,7 @@ pub fn init(ruby: &Ruby) -> Result<(), Error> {
     )?;
     class.define_method("add_repository", method!(MockServer::add_repository, 1))?;
     class.define_method("add_release", method!(MockServer::add_release, 1))?;
+    class.define_method("add_commit", method!(MockServer::add_commit, 1))?;
     class.define_method(
         "clear_all_mock_behaviors",
         method!(MockServer::clear_all_mock_behaviors, 0),
