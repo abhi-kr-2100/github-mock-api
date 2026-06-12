@@ -70,6 +70,8 @@ impl Repository {
             default_branch: "main".to_string(),
             open_issues_count: 0,
             open_issues: 0,
+            subscribers_count: 0,
+            network_count: 0,
             is_template: false,
             topics: Vec::new(),
             has_issues: true,
@@ -117,6 +119,16 @@ impl Repository {
         self.default_branch = branch.into();
         self
     }
+
+    pub fn subscribers_count(mut self, count: u64) -> Self {
+        self.subscribers_count = count;
+        self
+    }
+
+    pub fn network_count(mut self, count: u64) -> Self {
+        self.network_count = count;
+        self
+    }
 }
 
 #[cfg(test)]
@@ -132,6 +144,8 @@ mod tests {
         assert!(!repo.private);
         assert_eq!(repo.default_branch, "main");
         assert_eq!(repo.stargazers_count, 0);
+        assert_eq!(repo.subscribers_count, 0);
+        assert_eq!(repo.network_count, 0);
         assert!(repo.description.is_none());
         assert_eq!(
             repo.assignees_url,
@@ -145,12 +159,16 @@ mod tests {
             .description("A test repository")
             .private(true)
             .stargazers_count(1337)
+            .subscribers_count(42)
+            .network_count(10)
             .default_branch("develop");
 
         assert_eq!(repo.description, Some("A test repository".to_string()));
         assert!(repo.private);
         assert_eq!(repo.stargazers_count, 1337);
         assert_eq!(repo.watchers_count, 1337);
+        assert_eq!(repo.subscribers_count, 42);
+        assert_eq!(repo.network_count, 10);
         assert_eq!(repo.default_branch, "develop");
     }
 

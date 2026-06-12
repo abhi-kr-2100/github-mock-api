@@ -118,6 +118,10 @@ pub struct Repository {
     pub default_branch: String,
     pub open_issues_count: u64,
     pub open_issues: u64,
+    #[serde(default)]
+    pub subscribers_count: u64,
+    #[serde(default)]
+    pub network_count: u64,
     pub is_template: bool,
     pub topics: Vec<String>,
     pub has_issues: bool,
