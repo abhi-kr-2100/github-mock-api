@@ -5,6 +5,7 @@
 #include "github_mock_api/MockServer.h"
 #include "github_mock_api/MockBehavior.h"
 #include "github_mock_api/Repository.h"
+#include "github_mock_api/Commit.h"
 #include "github_mock_api/diplomat_runtime.h"
 
 #define URI_PREFIX "http://127.0.0.1:"
@@ -273,6 +274,64 @@ START_TEST(test_repository_e2e) {
 }
 END_TEST
 
+START_TEST(test_add_commit) {
+    MockServer_start_result started = MockServer_start();
+    ck_assert(started.is_ok);
+    MockServer *server = started.ok;
+
+    Commit *commit_builder = Commit_new(DS("octocat"), DS("hello-world"));
+    Commit *commit = Commit_with_message(commit_builder, DS("A test commit"));
+    Commit_destroy(commit_builder);
+
+    Commit *commit2 = Commit_with_sha(commit, DS("abc123def456"));
+    Commit *commit3 = Commit_with_author_name(commit2, DS("Test User"));
+    Commit *commit4 = Commit_with_author_email(commit3, DS("test@example.com"));
+
+    MockServer_add_commit_result res = MockServer_add_commit(server, commit4);
+    ck_assert(res.is_ok);
+
+    Commit_destroy(commit);
+    Commit_destroy(commit2);
+    Commit_destroy(commit3);
+    Commit_destroy(commit4);
+
+    MockServer_stop_result stopped = MockServer_stop(server);
+    ck_assert(stopped.is_ok);
+    MockServer_destroy(server);
+}
+END_TEST
+
+START_TEST(test_commit_e2e) {
+    MockServer_start_result started = MockServer_start();
+    ck_assert(started.is_ok);
+    MockServer *server = started.ok;
+
+    Commit *commit_builder = Commit_new(DS("octocat"), DS("hello-world"));
+    Commit *commit = Commit_with_sha(commit_builder, DS("abc123def456"));
+    Commit_destroy(commit_builder);
+
+    MockServer_add_commit_result res = MockServer_add_commit(server, commit);
+    ck_assert(res.is_ok);
+
+    DiplomatWrite *write = diplomat_buffer_write_create(64);
+    MockServer_uri(server, write);
+    const char *base_uri = (const char *)diplomat_buffer_write_get_bytes(write);
+    size_t base_uri_len = diplomat_buffer_write_len(write);
+
+    char curl_cmd[256];
+    snprintf(curl_cmd, sizeof(curl_cmd), "curl -s -f %.*s/repos/octocat/hello-world/commits/abc123def456 > /dev/null", (int)base_uri_len, base_uri);
+
+    int curl_res = system(curl_cmd);
+    ck_assert_int_eq(curl_res, 0);
+
+    diplomat_buffer_write_destroy(write);
+    Commit_destroy(commit);
+    MockServer_stop_result stopped = MockServer_stop(server);
+    ck_assert(stopped.is_ok);
+    MockServer_destroy(server);
+}
+END_TEST
+
 Suite *mock_server_suite(void) {
     Suite *s = suite_create("MockServer");
     TCase *tc_core = tcase_create("Core");
@@ -288,6 +347,8 @@ Suite *mock_server_suite(void) {
     tcase_add_test(tc_core, test_start_after_stop);
     tcase_add_test(tc_core, test_add_repository);
     tcase_add_test(tc_core, test_repository_e2e);
+    tcase_add_test(tc_core, test_add_commit);
+    tcase_add_test(tc_core, test_commit_e2e);
 
     suite_add_tcase(s, tc_core);
     return s;

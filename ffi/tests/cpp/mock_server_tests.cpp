@@ -12,6 +12,7 @@
 #include "github_mock_api/MockServer.hpp"
 #include "github_mock_api/Repository.hpp"
 #include "github_mock_api/Release.hpp"
+#include "github_mock_api/Commit.hpp"
 
 using namespace github_mock_api_ffi;
 
@@ -189,6 +190,34 @@ TEST_CASE("MockServer serves added repository", "[mock_server][network]") {
     REQUIRE(add_result.is_ok());
 
     auto uri = server->uri() + "/repos/octocat/hello-world";
+    std::string cmd = "curl -s -f " + uri + " > /dev/null";
+
+    CHECK(system(cmd.c_str()) == 0);
+}
+
+TEST_CASE("MockServer can add a commit", "[mock_server]") {
+    auto server = MockServer::start().ok().value();
+
+    auto commit = Commit::new_("octocat", "hello-world").ok().value();
+    auto commit2 = commit->with_message("A test commit").ok().value();
+    auto commit3 = commit2->with_sha("abc123def456").ok().value();
+    auto commit4 = commit3->with_author_name("Test User").ok().value();
+    auto commit5 = commit4->with_author_email("test@example.com").ok().value();
+
+    auto add_result = server->add_commit(*commit5);
+    CHECK(add_result.is_ok());
+}
+
+TEST_CASE("MockServer serves added commit", "[mock_server][network]") {
+    auto server = MockServer::start().ok().value();
+
+    auto commit = Commit::new_("octocat", "hello-world").ok().value();
+    auto commit2 = commit->with_sha("abc123def456").ok().value();
+
+    auto add_result = server->add_commit(*commit2);
+    REQUIRE(add_result.is_ok());
+
+    auto uri = server->uri() + "/repos/octocat/hello-world/commits/abc123def456";
     std::string cmd = "curl -s -f " + uri + " > /dev/null";
 
     CHECK(system(cmd.c_str()) == 0);

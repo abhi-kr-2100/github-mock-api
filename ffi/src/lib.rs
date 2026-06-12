@@ -4,7 +4,8 @@ mod ffi {
 
     use diplomat_runtime::DiplomatWrite;
     use github_mock_api::{
-        Error, MockServer as RustMockServer, Release as RustRelease, Repository as RustRepository,
+        Commit as RustCommit, Error, MockServer as RustMockServer, Release as RustRelease,
+        Repository as RustRepository,
     };
 
     use github_mock_api_ffi_common::{CommonError, parse_host, runtime};
@@ -97,6 +98,58 @@ mod ffi {
         }
 
         pub(crate) fn build(&self) -> RustRepository {
+            self.inner.clone()
+        }
+    }
+
+    #[diplomat::rust_link(github_mock_api::Commit, Struct)]
+    #[diplomat::opaque]
+    #[derive(Clone)]
+    pub struct Commit {
+        pub(crate) inner: RustCommit,
+        pub(crate) owner: String,
+        pub(crate) repo: String,
+    }
+
+    impl Commit {
+        /// Create a new commit builder.
+        pub fn new(owner: &str, repo: &str) -> Box<Commit> {
+            Box::new(Commit {
+                inner: RustCommit::new(owner, repo),
+                owner: owner.to_string(),
+                repo: repo.to_string(),
+            })
+        }
+
+        /// Set the SHA for the commit.
+        pub fn with_sha(&self, sha: &str) -> Box<Commit> {
+            let mut new = self.clone();
+            new.inner = new.inner.sha(sha);
+            Box::new(new)
+        }
+
+        /// Set the message for the commit.
+        pub fn with_message(&self, message: &str) -> Box<Commit> {
+            let mut new = self.clone();
+            new.inner = new.inner.message(message);
+            Box::new(new)
+        }
+
+        /// Set the author name for the commit.
+        pub fn with_author_name(&self, name: &str) -> Box<Commit> {
+            let mut new = self.clone();
+            new.inner = new.inner.author_name(name);
+            Box::new(new)
+        }
+
+        /// Set the author email for the commit.
+        pub fn with_author_email(&self, email: &str) -> Box<Commit> {
+            let mut new = self.clone();
+            new.inner = new.inner.author_email(email);
+            Box::new(new)
+        }
+
+        pub(crate) fn build(&self) -> RustCommit {
             self.inner.clone()
         }
     }
@@ -257,6 +310,15 @@ mod ffi {
             let owner = release.owner.clone();
             let repo = release.repo.clone();
             runtime()?.block_on(self.server.add_release(&owner, &repo, rust_release));
+            Ok(())
+        }
+
+        /// Add a commit to the server.
+        pub fn add_commit(&self, commit: &Commit) -> Result<(), MockServerError> {
+            let rust_commit = commit.build();
+            let owner = commit.owner.clone();
+            let repo = commit.repo.clone();
+            runtime()?.block_on(self.server.add_commit(&owner, &repo, rust_commit));
             Ok(())
         }
     }

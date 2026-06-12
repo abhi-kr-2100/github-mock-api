@@ -200,5 +200,32 @@ void main() {
       expect(json['stargazers_count'], equals(42));
       expect(json['default_branch'], equals('develop'));
     });
+
+    test('can add and retrieve a commit', () async {
+      final server = MockServer.start();
+      addTearDown(server.stop);
+      final uri = server.uri();
+
+      final commit = Commit.new_('octocat', 'hello-world')
+          .withSha('abc123def456')
+          .withMessage('A test commit')
+          .withAuthorName('Test User')
+          .withAuthorEmail('test@example.com');
+
+      server.addCommit(commit);
+
+      final client = HttpClient();
+      addTearDown(client.close);
+      final request = await client.getUrl(Uri.parse('$uri/repos/octocat/hello-world/commits/abc123def456'));
+      final response = await request.close();
+      final body = await response.transform(utf8.decoder).join();
+
+      expect(response.statusCode, equals(200));
+      final json = jsonDecode(body) as Map<String, dynamic>;
+      expect(json['sha'], equals('abc123def456'));
+      expect(json['commit']['message'], equals('A test commit'));
+      expect(json['commit']['author']['name'], equals('Test User'));
+      expect(json['commit']['author']['email'], equals('test@example.com'));
+    });
   });
 }
