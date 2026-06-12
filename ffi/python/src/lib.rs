@@ -292,6 +292,33 @@ impl CommitBuilder {
     }
 }
 
+#[pyclass(module = "github_mock_api", from_py_object)]
+#[derive(Clone)]
+pub struct Asset {
+    inner: ::github_mock_api::Asset,
+}
+
+#[pymethods]
+impl Asset {
+    #[staticmethod]
+    pub fn from_bytes(name: String, bytes: Vec<u8>, content_type: String) -> Self {
+        Self {
+            inner: ::github_mock_api::Asset::from_bytes(name, bytes, content_type),
+        }
+    }
+
+    #[staticmethod]
+    pub fn from_file(name: String, path: String, content_type: String) -> Self {
+        Self {
+            inner: ::github_mock_api::Asset::from_path(
+                name,
+                std::path::PathBuf::from(path),
+                content_type,
+            ),
+        }
+    }
+}
+
 #[pyclass(module = "github_mock_api")]
 struct MockServer {
     server: Mutex<Option<RustMockServer>>,
@@ -396,6 +423,20 @@ impl MockServer {
             .block_on(server.add_commit(&owner, &repo, commit.inner));
         Ok(())
     }
+
+    fn add_asset(&self, owner: String, repo: String, tag: String, asset: Asset) -> PyResult<()> {
+        let lock = self.server.lock().map_err(|_| lock_error())?;
+        let server = lock
+            .as_ref()
+            .ok_or_else(|| PyErr::new::<PyRuntimeError, _>("server is stopped"))?;
+        runtime().map_err(runtime_error)?.block_on(server.add_asset(
+            &owner,
+            &repo,
+            &tag,
+            asset.inner,
+        ));
+        Ok(())
+    }
 }
 
 pub fn init_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
@@ -409,6 +450,7 @@ pub fn init_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<ReleaseBuilder>()?;
     m.add_class::<Commit>()?;
     m.add_class::<CommitBuilder>()?;
+    m.add_class::<Asset>()?;
     Ok(())
 }
 

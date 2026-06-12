@@ -5,7 +5,7 @@ import urllib.error
 import urllib.request
 
 import pytest
-from github_mock_api import MockServer, MockBehavior, MockError, Repository, Release, Commit
+from github_mock_api import MockServer, MockBehavior, MockError, Repository, Release, Commit, Asset
 
 
 class TestMockServer:
@@ -154,3 +154,14 @@ class TestMockServer:
             assert body[0]["commit"]["message"] == "Initial commit"
             assert body[0]["commit"]["author"]["name"] == "Mona Octocat"
             assert body[0]["commit"]["author"]["email"] == "mona@github.com"
+
+    def test_add_asset(self, server: MockServer) -> None:
+        content = b"hello world"
+        asset = Asset.from_bytes("test.txt", content, "text/plain")
+        server.add_asset("octocat", "hello-world", "v1.0.0", asset)
+
+        url = f"{server.uri()}/octocat/hello-world/releases/download/v1.0.0/test.txt"
+        with urllib.request.urlopen(url) as response:
+            assert response.status == 200
+            assert response.read() == content
+            assert response.headers["Content-Type"] == "text/plain"
