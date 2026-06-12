@@ -17,12 +17,29 @@ fun main() {
 
         server.addRepository(repo).getOrThrow()
 
-        // Verify with HTTP
-        val url = java.net.URL("$uri/repos/octocat/hello-world")
-        val connection = url.openConnection() as java.net.HttpURLConnection
-        connection.requestMethod = "GET"
-        if (connection.responseCode != 200) {
-            System.err.println("expected 200 OK, got ${connection.responseCode}")
+        // Verify Repository with HTTP
+        val repoUrl = java.net.URL("$uri/repos/octocat/hello-world")
+        val repoConnection = repoUrl.openConnection() as java.net.HttpURLConnection
+        repoConnection.requestMethod = "GET"
+        if (repoConnection.responseCode != 200) {
+            System.err.println("expected 200 OK for repo, got ${repoConnection.responseCode}")
+            System.exit(1)
+        }
+
+        val commit = io.github.abhi_kr_2100.github_mock_api_ffi.Commit.new_("octocat", "hello-world")
+            .withSha("abc123def456")
+            .withMessage("A test commit")
+            .withAuthorName("Test User")
+            .withAuthorEmail("test@example.com")
+
+        server.addCommit(commit).getOrThrow()
+
+        // Verify Commit with HTTP
+        val commitUrl = java.net.URL("$uri/repos/octocat/hello-world/commits/abc123def456")
+        val commitConnection = commitUrl.openConnection() as java.net.HttpURLConnection
+        commitConnection.requestMethod = "GET"
+        if (commitConnection.responseCode != 200) {
+            System.err.println("expected 200 OK for commit, got ${commitConnection.responseCode}")
             System.exit(1)
         }
 
