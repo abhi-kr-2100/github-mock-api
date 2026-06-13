@@ -195,6 +195,22 @@ TEST_CASE("MockServer serves added repository", "[mock_server][network]") {
     CHECK(system(cmd.c_str()) == 0);
 }
 
+TEST_CASE("MockServer serves added repository with subscribers and network count", "[mock_server][network]") {
+    auto server = MockServer::start().ok().value();
+
+    auto repo = Repository::new_("octocat", "hello-world").ok().value();
+    auto repo2 = repo->with_subscribers_count(42);
+    auto repo3 = repo2->with_network_count(10);
+
+    auto add_result = server->add_repository(*repo3);
+    REQUIRE(add_result.is_ok());
+
+    auto uri = server->uri() + "/repos/octocat/hello-world";
+    std::string cmd = "curl -s -f " + uri + " | grep -q '\"subscribers_count\":42' && curl -s -f " + uri + " | grep -q '\"network_count\":10'";
+
+    CHECK(system(cmd.c_str()) == 0);
+}
+
 TEST_CASE("MockServer can add and serve an asset", "[mock_server][network]") {
     auto server = MockServer::start().ok().value();
 

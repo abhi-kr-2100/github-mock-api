@@ -124,6 +124,20 @@ mod ffi {
             Box::new(new)
         }
 
+        /// Set the subscribers count for the repository.
+        pub fn with_subscribers_count(&self, count: u64) -> Box<Repository> {
+            let mut new = self.clone();
+            new.inner = new.inner.subscribers_count(count);
+            Box::new(new)
+        }
+
+        /// Set the network count for the repository.
+        pub fn with_network_count(&self, count: u64) -> Box<Repository> {
+            let mut new = self.clone();
+            new.inner = new.inner.network_count(count);
+            Box::new(new)
+        }
+
         pub(crate) fn build(&self) -> RustRepository {
             self.inner.clone()
         }
