@@ -6,6 +6,7 @@
 #include "github_mock_api/MockBehavior.h"
 #include "github_mock_api/Repository.h"
 #include "github_mock_api/Commit.h"
+#include "github_mock_api/Asset.h"
 #include "github_mock_api/diplomat_runtime.h"
 
 #define URI_PREFIX "http://127.0.0.1:"
@@ -332,6 +333,37 @@ START_TEST(test_commit_e2e) {
 }
 END_TEST
 
+START_TEST(test_asset_e2e) {
+    MockServer_start_result started = MockServer_start();
+    ck_assert(started.is_ok);
+    MockServer *server = started.ok;
+
+    const char content[] = "hello world";
+    DiplomatU8View bytes = { .data = (const uint8_t*)content, .len = sizeof(content) - 1 };
+    Asset *asset = Asset_from_bytes(DS("test.txt"), bytes, DS("text/plain"));
+
+    MockServer_add_asset_result res = MockServer_add_asset(server, DS("octocat"), DS("hello-world"), DS("v1.0.0"), asset);
+    ck_assert(res.is_ok);
+
+    DiplomatWrite *write = diplomat_buffer_write_create(64);
+    MockServer_uri(server, write);
+    const char *base_uri = (const char *)diplomat_buffer_write_get_bytes(write);
+    size_t base_uri_len = diplomat_buffer_write_len(write);
+
+    char curl_cmd[256];
+    snprintf(curl_cmd, sizeof(curl_cmd), "curl -s -f %.*s/octocat/hello-world/releases/download/v1.0.0/test.txt | grep -q \"hello world\"", (int)base_uri_len, base_uri);
+
+    int curl_res = system(curl_cmd);
+    ck_assert_int_eq(curl_res, 0);
+
+    diplomat_buffer_write_destroy(write);
+    Asset_destroy(asset);
+    MockServer_stop_result stopped = MockServer_stop(server);
+    ck_assert(stopped.is_ok);
+    MockServer_destroy(server);
+}
+END_TEST
+
 Suite *mock_server_suite(void) {
     Suite *s = suite_create("MockServer");
     TCase *tc_core = tcase_create("Core");
@@ -349,6 +381,7 @@ Suite *mock_server_suite(void) {
     tcase_add_test(tc_core, test_repository_e2e);
     tcase_add_test(tc_core, test_add_commit);
     tcase_add_test(tc_core, test_commit_e2e);
+    tcase_add_test(tc_core, test_asset_e2e);
 
     suite_add_tcase(s, tc_core);
     return s;
