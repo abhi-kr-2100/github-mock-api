@@ -153,6 +153,18 @@ impl RepositoryBuilder {
         new
     }
 
+    pub fn subscribers_count(&self, count: u64) -> Self {
+        let mut new = self.clone();
+        new.inner = new.inner.subscribers_count(count);
+        new
+    }
+
+    pub fn network_count(&self, count: u64) -> Self {
+        let mut new = self.clone();
+        new.inner = new.inner.network_count(count);
+        new
+    }
+
     pub fn build(&self) -> Repository {
         Repository {
             inner: self.inner.clone(),
