@@ -464,7 +464,10 @@ pub fn init(ruby: &Ruby) -> Result<(), Error> {
     repository_class.define_method("private", method!(Repository::private, 1))?;
     repository_class.define_method("stargazers_count", method!(Repository::stargazers_count, 1))?;
     repository_class.define_method("default_branch", method!(Repository::default_branch, 1))?;
-    repository_class.define_method("subscribers_count", method!(Repository::subscribers_count, 1))?;
+    repository_class.define_method(
+        "subscribers_count",
+        method!(Repository::subscribers_count, 1),
+    )?;
     repository_class.define_method("network_count", method!(Repository::network_count, 1))?;
 
     let commit_class = module.define_class("Commit", ruby.class_object())?;
