@@ -1,8 +1,9 @@
 use std::sync::Mutex;
 
 use github_mock_api::{
-    Commit as RustCommit, Error as MockApiError, MockBehavior as RustMockBehavior, MockError,
-    MockServer as RustMockServer, Release as RustRelease, Repository as RustRepository,
+    Asset as RustAsset, Commit as RustCommit, Error as MockApiError,
+    MockBehavior as RustMockBehavior, MockError, MockServer as RustMockServer,
+    Release as RustRelease, Repository as RustRepository,
 };
 use github_mock_api_ffi_common::{CommonError, parse_host, runtime};
 use magnus::{Error, IntoValue, Ruby, function, method, prelude::*, wrap};
@@ -103,6 +104,26 @@ impl Repository {
         *inner = inner.clone().default_branch(branch);
         Ok(rb_self.into_value_with(ruby))
     }
+
+    fn subscribers_count(
+        ruby: &Ruby,
+        rb_self: magnus::typed_data::Obj<Self>,
+        count: u64,
+    ) -> Result<magnus::Value, Error> {
+        let mut inner = rb_self.inner.lock().map_err(|_| lock_error(ruby))?;
+        *inner = inner.clone().subscribers_count(count);
+        Ok(rb_self.into_value_with(ruby))
+    }
+
+    fn network_count(
+        ruby: &Ruby,
+        rb_self: magnus::typed_data::Obj<Self>,
+        count: u64,
+    ) -> Result<magnus::Value, Error> {
+        let mut inner = rb_self.inner.lock().map_err(|_| lock_error(ruby))?;
+        *inner = inner.clone().network_count(count);
+        Ok(rb_self.into_value_with(ruby))
+    }
 }
 
 #[wrap(class = "GitHubMockAPI::Commit", free_immediately, size)]
@@ -159,6 +180,25 @@ impl Commit {
         let mut inner = rb_self.inner.lock().map_err(|_| lock_error(ruby))?;
         *inner = inner.clone().author_email(email);
         Ok(rb_self.into_value_with(ruby))
+    }
+}
+
+#[wrap(class = "GitHubMockAPI::Asset", free_immediately, size)]
+struct Asset {
+    inner: Mutex<RustAsset>,
+}
+
+impl Asset {
+    fn from_bytes(name: String, bytes: Vec<u8>, content_type: String) -> Self {
+        Self {
+            inner: Mutex::new(RustAsset::from_bytes(name, bytes, content_type)),
+        }
+    }
+
+    fn from_file(name: String, path: String, content_type: String) -> Self {
+        Self {
+            inner: Mutex::new(RustAsset::from_path(name, path, content_type)),
+        }
     }
 }
 
@@ -380,6 +420,25 @@ impl MockServer {
         Ok(())
     }
 
+    fn add_asset(
+        ruby: &Ruby,
+        rb_self: &Self,
+        owner: String,
+        repo: String,
+        tag: String,
+        asset: &Asset,
+    ) -> Result<(), Error> {
+        let mut lock = rb_self.server.lock().map_err(|_| lock_error(ruby))?;
+        let server = lock.as_mut().ok_or_else(|| server_stopped_error(ruby))?;
+
+        let asset_inner = asset.inner.lock().map_err(|_| lock_error(ruby))?.clone();
+
+        runtime()
+            .map_err(|err| runtime_error(ruby, err))?
+            .block_on(server.add_asset(&owner, &repo, &tag, asset_inner));
+        Ok(())
+    }
+
     fn clear_all_mock_behaviors(ruby: &Ruby, rb_self: &Self) -> Result<(), Error> {
         let mut lock = rb_self.server.lock().map_err(|_| lock_error(ruby))?;
         let server = lock.as_mut().ok_or_else(|| server_stopped_error(ruby))?;
@@ -405,6 +464,8 @@ pub fn init(ruby: &Ruby) -> Result<(), Error> {
     repository_class.define_method("private", method!(Repository::private, 1))?;
     repository_class.define_method("stargazers_count", method!(Repository::stargazers_count, 1))?;
     repository_class.define_method("default_branch", method!(Repository::default_branch, 1))?;
+    repository_class.define_method("subscribers_count", method!(Repository::subscribers_count, 1))?;
+    repository_class.define_method("network_count", method!(Repository::network_count, 1))?;
 
     let commit_class = module.define_class("Commit", ruby.class_object())?;
     commit_class.define_singleton_method("new", function!(Commit::new, 2))?;
@@ -422,6 +483,10 @@ pub fn init(ruby: &Ruby) -> Result<(), Error> {
     release_class.define_method("prerelease", method!(Release::prerelease, 1))?;
     release_class.define_method("created_at", method!(Release::created_at, 1))?;
 
+    let asset_class = module.define_class("Asset", ruby.class_object())?;
+    asset_class.define_singleton_method("from_bytes", function!(Asset::from_bytes, 3))?;
+    asset_class.define_singleton_method("from_file", function!(Asset::from_file, 3))?;
+
     let behavior_class = module.define_class("MockBehavior", ruby.class_object())?;
     behavior_class.define_singleton_method("new", function!(MockBehavior::new, 0))?;
     behavior_class.define_method("error", method!(MockBehavior::error, 1))?;
@@ -438,6 +503,7 @@ pub fn init(ruby: &Ruby) -> Result<(), Error> {
     class.define_method("add_repository", method!(MockServer::add_repository, 1))?;
     class.define_method("add_release", method!(MockServer::add_release, 1))?;
     class.define_method("add_commit", method!(MockServer::add_commit, 1))?;
+    class.define_method("add_asset", method!(MockServer::add_asset, 4))?;
     class.define_method(
         "clear_all_mock_behaviors",
         method!(MockServer::clear_all_mock_behaviors, 0),
