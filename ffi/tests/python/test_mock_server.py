@@ -116,6 +116,22 @@ class TestMockServer:
             assert body["description"] == "A test repository"
             assert body["stargazers_count"] == 42
 
+    def test_add_repository_with_counts(self, server: MockServer) -> None:
+        repo = (
+            Repository.builder("octocat", "hello-world")
+            .subscribers_count(10)
+            .network_count(5)
+            .build()
+        )
+        server.add_repository(repo)
+
+        url = f"{server.uri()}/repos/octocat/hello-world"
+        with urllib.request.urlopen(url) as response:
+            assert response.status == 200
+            body = json.loads(response.read().decode())
+            assert body["subscribers_count"] == 10
+            assert body["network_count"] == 5
+
     def test_add_release(self, server: MockServer) -> None:
         release = (
             Release.builder("octocat", "hello-world", "v1.0.0")
