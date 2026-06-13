@@ -15,7 +15,9 @@ impl Release {
             url: format!("{base}/releases/{id}"),
             html_url: format!("{html_base}/releases/tag/{tag_name}"),
             assets_url: format!("{base}/releases/{id}/assets"),
-            upload_url: format!("{base}/releases/{id}/assets{{?name,label}}"),
+            upload_url: format!(
+                "https://uploads.github.com/repos/{owner}/{repo}/releases/{id}/assets{{?name,label}}"
+            ),
             tarball_url: Some(format!("{base}/tarball/{tag_name}")),
             zipball_url: Some(format!("{base}/zipball/{tag_name}")),
             id,
@@ -155,6 +157,13 @@ mod tests {
         assert_eq!(
             release.html_url,
             "https://github.com/octocat/hello-world/releases/tag/v1.0.0"
+        );
+        assert_eq!(
+            release.upload_url,
+            format!(
+                "https://uploads.github.com/repos/octocat/hello-world/releases/{}/assets{{?name,label}}",
+                release.id
+            )
         );
         assert!(release.tarball_url.is_some());
         assert!(release.zipball_url.is_some());
