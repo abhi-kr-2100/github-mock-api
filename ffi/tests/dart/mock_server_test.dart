@@ -227,5 +227,26 @@ void main() {
       expect(json['commit']['author']['name'], equals('Test User'));
       expect(json['commit']['author']['email'], equals('test@example.com'));
     });
+
+    test('can add and retrieve an asset', () async {
+      final server = MockServer.start();
+      addTearDown(server.stop);
+      final uri = server.uri();
+
+      final content = utf8.encode('hello world');
+      final asset = Asset.fromBytes('test.txt', content, 'text/plain');
+
+      server.addAsset('octocat', 'hello-world', 'v1.0.0', asset);
+
+      final client = HttpClient();
+      addTearDown(client.close);
+      final request = await client.getUrl(Uri.parse('$uri/octocat/hello-world/releases/download/v1.0.0/test.txt'));
+      final response = await request.close();
+      final body = await response.transform(utf8.decoder).join();
+
+      expect(response.statusCode, equals(200));
+      expect(body, equals('hello world'));
+      expect(response.headers.contentType?.toString(), equals('text/plain'));
+    });
   });
 }

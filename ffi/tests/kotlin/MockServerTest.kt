@@ -43,6 +43,23 @@ fun main() {
             System.exit(1)
         }
 
+        val asset = io.github.abhi_kr_2100.github_mock_api_ffi.Asset.fromBytes("test.txt", "hello world".toByteArray().toUByteArray(), "text/plain")
+        server.addAsset("octocat", "hello-world", "v1.0.0", asset).getOrThrow()
+
+        // Verify Asset with HTTP
+        val assetUrl = java.net.URL("$uri/octocat/hello-world/releases/download/v1.0.0/test.txt")
+        val assetConnection = assetUrl.openConnection() as java.net.HttpURLConnection
+        assetConnection.requestMethod = "GET"
+        if (assetConnection.responseCode != 200) {
+            System.err.println("expected 200 OK for asset, got ${assetConnection.responseCode}")
+            System.exit(1)
+        }
+        val assetBody = assetConnection.inputStream.bufferedReader().readText()
+        if (assetBody != "hello world") {
+            System.err.println("expected 'hello world' for asset body, got '$assetBody'")
+            System.exit(1)
+        }
+
         server.stop()
     } catch (e: Exception) {
         e.printStackTrace()
