@@ -5,8 +5,13 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <sstream>
 
 #include <catch2/catch_test_macros.hpp>
+#include <curlpp/cURLpp.hpp>
+#include <curlpp/Easy.hpp>
+#include <curlpp/Options.hpp>
+#include <nlohmann/json.hpp>
 
 #include "github_mock_api/MockServer.hpp"
 #include "github_mock_api/Repository.hpp"
@@ -185,14 +190,25 @@ TEST_CASE("MockServer serves added repository", "[mock_server][network]") {
     auto server = MockServer::start().ok().value();
 
     auto repo = Repository::new_("octocat", "hello-world").ok().value();
+    auto repo2 = repo->with_description("A test repository").ok().value();
 
-    auto add_result = server->add_repository(*repo);
+    auto add_result = server->add_repository(*repo2);
     REQUIRE(add_result.is_ok());
 
     auto uri = server->uri() + "/repos/octocat/hello-world";
-    std::string cmd = "curl -s -f " + uri + " > /dev/null";
 
-    CHECK(system(cmd.c_str()) == 0);
+    curlpp::Cleanup cleaner;
+    curlpp::Easy request;
+    std::stringstream response;
+
+    request.setOpt(new curlpp::options::Url(uri));
+    request.setOpt(new curlpp::options::WriteStream(&response));
+    request.perform();
+
+    auto json = nlohmann::json::parse(response.str());
+    CHECK(json["name"] == "hello-world");
+    CHECK(json["description"] == "A test repository");
+    CHECK(json["owner"]["login"] == "octocat");
 }
 
 TEST_CASE("MockServer serves added repository with subscribers and network count", "[mock_server][network]") {
@@ -206,9 +222,18 @@ TEST_CASE("MockServer serves added repository with subscribers and network count
     REQUIRE(add_result.is_ok());
 
     auto uri = server->uri() + "/repos/octocat/hello-world";
-    std::string cmd = "curl -s -f " + uri + " | grep -q '\"subscribers_count\":42' && curl -s -f " + uri + " | grep -q '\"network_count\":10'";
 
-    CHECK(system(cmd.c_str()) == 0);
+    curlpp::Cleanup cleaner;
+    curlpp::Easy request;
+    std::stringstream response;
+
+    request.setOpt(new curlpp::options::Url(uri));
+    request.setOpt(new curlpp::options::WriteStream(&response));
+    request.perform();
+
+    auto json = nlohmann::json::parse(response.str());
+    CHECK(json["subscribers_count"] == 42);
+    CHECK(json["network_count"] == 10);
 }
 
 TEST_CASE("MockServer can add and serve an asset", "[mock_server][network]") {
@@ -225,9 +250,16 @@ TEST_CASE("MockServer can add and serve an asset", "[mock_server][network]") {
     REQUIRE(add_result.is_ok());
 
     auto uri = server->uri() + "/octocat/hello-world/releases/download/v1.0.0/test.txt";
-    std::string cmd = "curl -s -f " + uri + " | grep -q \"hello world\"";
 
-    CHECK(system(cmd.c_str()) == 0);
+    curlpp::Cleanup cleaner;
+    curlpp::Easy request;
+    std::stringstream response;
+
+    request.setOpt(new curlpp::options::Url(uri));
+    request.setOpt(new curlpp::options::WriteStream(&response));
+    request.perform();
+
+    CHECK(response.str() == "hello world");
 }
 
 TEST_CASE("MockServer can add a commit", "[mock_server]") {
@@ -253,9 +285,17 @@ TEST_CASE("MockServer serves added commit", "[mock_server][network]") {
     REQUIRE(add_result.is_ok());
 
     auto uri = server->uri() + "/repos/octocat/hello-world/commits/abc123def456";
-    std::string cmd = "curl -s -f " + uri + " > /dev/null";
 
-    CHECK(system(cmd.c_str()) == 0);
+    curlpp::Cleanup cleaner;
+    curlpp::Easy request;
+    std::stringstream response;
+
+    request.setOpt(new curlpp::options::Url(uri));
+    request.setOpt(new curlpp::options::WriteStream(&response));
+    request.perform();
+
+    auto json = nlohmann::json::parse(response.str());
+    CHECK(json["sha"] == "abc123def456");
 }
 
 TEST_CASE("MockServer can add a release", "[mock_server]") {
@@ -281,7 +321,15 @@ TEST_CASE("MockServer serves added release", "[mock_server][network]") {
     REQUIRE(add_result.is_ok());
 
     auto uri = server->uri() + "/repos/octocat/hello-world/releases/tags/v1.0.0";
-    std::string cmd = "curl -s -f " + uri + " > /dev/null";
 
-    CHECK(system(cmd.c_str()) == 0);
+    curlpp::Cleanup cleaner;
+    curlpp::Easy request;
+    std::stringstream response;
+
+    request.setOpt(new curlpp::options::Url(uri));
+    request.setOpt(new curlpp::options::WriteStream(&response));
+    request.perform();
+
+    auto json = nlohmann::json::parse(response.str());
+    CHECK(json["tag_name"] == "v1.0.0");
 }
