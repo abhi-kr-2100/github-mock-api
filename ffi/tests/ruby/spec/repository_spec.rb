@@ -10,6 +10,22 @@ RSpec.describe GitHubMockAPI::Repository do
     end
   end
 
+  describe ".load_from_file" do
+    it "loads repositories from a JSON file" do
+      path = File.expand_path("../../../../../testing/data/repositories.json", __FILE__)
+      repos = described_class.load_from_file(path)
+      expect(repos).to be_an(Array)
+      expect(repos.first).to be_a(described_class)
+      expect(repos.size).to eq(30)
+    end
+
+    it "raises an error for non-existent files" do
+      expect {
+        described_class.load_from_file("non_existent.json")
+      }.to raise_error(IOError)
+    end
+  end
+
   describe "builder methods" do
     it "supports method chaining and mutates self" do
       repo = described_class.new("octocat", "hello-world")
@@ -54,6 +70,18 @@ RSpec.describe GitHubMockAPI::Repository do
       data2 = JSON.parse(Net::HTTP.get(uri2))
       expect(data2["subscribers_count"]).to eq(50)
       expect(data2["network_count"]).to eq(25)
+    end
+
+    it "can register loaded repositories with the server" do
+      path = File.expand_path("../../../../../testing/data/repositories.json", __FILE__)
+      repos = described_class.load_from_file(path)
+      repos.each { |repo| server.add_repository(repo) }
+
+      uri = URI("#{server.uri}/repos/karpathy/arxiv-sanity-lite")
+      response = Net::HTTP.get_response(uri)
+      expect(response.code).to eq("200")
+      data = JSON.parse(response.body)
+      expect(data["name"]).to eq("arxiv-sanity-lite")
     end
 
     it "is case-insensitive for owner and repo lookup" do
