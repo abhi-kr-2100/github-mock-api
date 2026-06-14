@@ -46,9 +46,12 @@ impl Commit {
                 }),
                 message: String::new(),
                 comment_count: 0,
-                tree: CommitTree {
-                    sha: generate_sha(),
-                    url: format!("{base}/git/trees/{sha}"),
+                tree: {
+                    let tree_sha = generate_sha();
+                    CommitTree {
+                        url: format!("{base}/git/trees/{tree_sha}"),
+                        sha: tree_sha,
+                    }
                 },
                 verification: Verification {
                     verified: false,
@@ -79,7 +82,7 @@ impl Commit {
         self.html_url = commit_html_url;
         self.comments_url = format!("{base}/commits/{sha}/comments");
         self.commit.url = commit_url;
-        self.commit.tree.url = format!("{base}/git/trees/{sha}");
+        self.commit.tree.url = format!("{base}/git/trees/{}", self.commit.tree.sha);
         self
     }
 
@@ -154,5 +157,22 @@ mod tests {
         assert!(commit.html_url.ends_with("/commit/customsha"));
         assert!(commit.comments_url.ends_with("/commits/customsha/comments"));
         assert!(commit.commit.url.ends_with("/git/commits/customsha"));
+    }
+
+    #[test]
+    fn test_commit_tree_url_uses_tree_sha() {
+        let commit = Commit::new("owner", "repo");
+        let tree_sha = commit.commit.tree.sha.clone();
+        let commit_sha = commit.sha.clone();
+
+        assert_ne!(tree_sha, commit_sha);
+        assert!(commit.commit.tree.url.contains(&tree_sha));
+        assert!(!commit.commit.tree.url.contains(&commit_sha));
+
+        let commit = commit.sha("newcommitsha");
+        assert_eq!(commit.sha, "newcommitsha");
+        assert_eq!(commit.commit.tree.sha, tree_sha);
+        assert!(commit.commit.tree.url.contains(&tree_sha));
+        assert!(!commit.commit.tree.url.contains("newcommitsha"));
     }
 }
