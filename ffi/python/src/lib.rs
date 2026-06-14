@@ -35,6 +35,17 @@ fn lock_error() -> PyErr {
     PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("mock server lock poisoned")
 }
 
+fn load_error(err: ::github_mock_api::LoadError) -> PyErr {
+    match err {
+        ::github_mock_api::LoadError::Io { .. } => {
+            PyErr::new::<pyo3::exceptions::PyIOError, _>(err.to_string())
+        }
+        ::github_mock_api::LoadError::Json { .. } => {
+            PyErr::new::<pyo3::exceptions::PyValueError, _>(err.to_string())
+        }
+    }
+}
+
 #[pyclass(
     module = "github_mock_api",
     rename_all = "SCREAMING_SNAKE_CASE",
@@ -105,6 +116,12 @@ impl Repository {
     #[staticmethod]
     pub fn builder(owner: String, name: String) -> RepositoryBuilder {
         RepositoryBuilder::new(owner, name)
+    }
+
+    #[staticmethod]
+    pub fn load_from_file(path: String) -> PyResult<Vec<Self>> {
+        let repos = ::github_mock_api::Repository::load_from_file(path).map_err(load_error)?;
+        Ok(repos.into_iter().map(|inner| Self { inner }).collect())
     }
 }
 
@@ -184,6 +201,13 @@ impl Release {
     pub fn builder(owner: String, repo: String, tag_name: String) -> ReleaseBuilder {
         ReleaseBuilder::new(owner, repo, tag_name)
     }
+
+    #[staticmethod]
+    pub fn load_from_file(path: String, owner: String, repo: String) -> PyResult<Vec<Self>> {
+        let releases =
+            ::github_mock_api::Release::load_from_file(path, &owner, &repo).map_err(load_error)?;
+        Ok(releases.into_iter().map(|inner| Self { inner }).collect())
+    }
 }
 
 #[pyclass(module = "github_mock_api", from_py_object)]
@@ -255,6 +279,13 @@ impl Commit {
     #[staticmethod]
     pub fn builder(owner: String, repo: String) -> CommitBuilder {
         CommitBuilder::new(owner, repo)
+    }
+
+    #[staticmethod]
+    pub fn load_from_file(path: String, owner: String, repo: String) -> PyResult<Vec<Self>> {
+        let commits =
+            ::github_mock_api::Commit::load_from_file(path, &owner, &repo).map_err(load_error)?;
+        Ok(commits.into_iter().map(|inner| Self { inner }).collect())
     }
 }
 

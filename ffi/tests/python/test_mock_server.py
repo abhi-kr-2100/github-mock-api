@@ -1,6 +1,7 @@
 """Tests for the github_mock_api Python bindings."""
 
 import json
+import os
 import urllib.error
 import urllib.request
 
@@ -181,3 +182,49 @@ class TestMockServer:
             assert response.status == 200
             assert response.read() == content
             assert response.headers["Content-Type"] == "text/plain"
+
+    def test_repository_load_from_file(self, server: MockServer) -> None:
+        path = os.path.join(os.path.dirname(__file__), "../../..", "testing/data/repositories.json")
+        repos = Repository.load_from_file(path)
+        assert len(repos) > 0
+        for repo in repos:
+            server.add_repository(repo)
+
+        # arxiv-sanity-lite is the first repo in repositories.json
+        url = f"{server.uri()}/repos/karpathy/arxiv-sanity-lite"
+        with urllib.request.urlopen(url) as response:
+            assert response.status == 200
+            body = json.loads(response.read().decode())
+            assert body["name"] == "arxiv-sanity-lite"
+
+    def test_release_load_from_file(self, server: MockServer) -> None:
+        owner, repo = "octocat", "hello-world"
+        path = os.path.join(os.path.dirname(__file__), "../../..", "testing/data/releases.json")
+        releases = Release.load_from_file(path, owner, repo)
+        assert len(releases) > 0
+        for release in releases:
+            server.add_release(owner, repo, release)
+
+        url = f"{server.uri()}/repos/{owner}/{repo}/releases"
+        with urllib.request.urlopen(url) as response:
+            assert response.status == 200
+            body = json.loads(response.read().decode())
+            assert len(body) == len(releases)
+            # cdda-experimental-2026-06-04-1344 is the first tag in releases.json
+            assert body[0]["tag_name"] == "cdda-experimental-2026-06-04-1344"
+
+    def test_commit_load_from_file(self, server: MockServer) -> None:
+        owner, repo = "octocat", "hello-world"
+        path = os.path.join(os.path.dirname(__file__), "../../..", "testing/data/commits.json")
+        commits = Commit.load_from_file(path, owner, repo)
+        assert len(commits) > 0
+        for commit in commits:
+            server.add_commit(owner, repo, commit)
+
+        url = f"{server.uri()}/repos/{owner}/{repo}/commits"
+        with urllib.request.urlopen(url) as response:
+            assert response.status == 200
+            body = json.loads(response.read().decode())
+            assert len(body) == len(commits)
+            # 9291e608e354242c8ff12d47896799d456719922 is the first sha in commits.json
+            assert body[0]["sha"] == "9291e608e354242c8ff12d47896799d456719922"
