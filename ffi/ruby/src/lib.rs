@@ -1,7 +1,7 @@
 use std::sync::Mutex;
 
 use github_mock_api::{
-    Asset as RustAsset, Commit as RustCommit, Error as MockApiError,
+    Asset as RustAsset, Commit as RustCommit, Error as MockApiError, LoadError,
     MockBehavior as RustMockBehavior, MockError, MockServer as RustMockServer,
     Release as RustRelease, Repository as RustRepository,
 };
@@ -35,6 +35,19 @@ fn lock_error(ruby: &Ruby) -> Error {
     Error::new(ruby.exception_runtime_error(), "mock server lock poisoned")
 }
 
+fn load_error(ruby: &Ruby, err: LoadError) -> Error {
+    match err {
+        LoadError::Io { path, source } => Error::new(
+            ruby.exception_io_error(),
+            format!("failed to read file {}: {}", path.display(), source),
+        ),
+        LoadError::Json { path, source } => Error::new(
+            ruby.exception_arg_error(),
+            format!("failed to parse JSON from {}: {}", path.display(), source),
+        ),
+    }
+}
+
 fn server_stopped_error(ruby: &Ruby) -> Error {
     ruby.define_module("GitHubMockAPI")
         .and_then(|m| m.const_get::<_, magnus::Value>("ServerStoppedError"))
@@ -54,6 +67,17 @@ impl Repository {
         Self {
             inner: Mutex::new(RustRepository::new(&owner, &name)),
         }
+    }
+
+    fn load_from_file(ruby: &Ruby, path: String) -> Result<magnus::Value, Error> {
+        let repos = RustRepository::load_from_file(path).map_err(|err| load_error(ruby, err))?;
+        let ary = ruby.ary_new();
+        for inner in repos {
+            ary.push(Self {
+                inner: Mutex::new(inner),
+            })?;
+        }
+        Ok(ary.into_value_with(ruby))
     }
 
     fn description(
@@ -456,6 +480,8 @@ pub fn init(ruby: &Ruby) -> Result<(), Error> {
 
     let repository_class = module.define_class("Repository", ruby.class_object())?;
     repository_class.define_singleton_method("new", function!(Repository::new, 2))?;
+    repository_class
+        .define_singleton_method("load_from_file", function!(Repository::load_from_file, 1))?;
     repository_class.define_method("description", method!(Repository::description, 1))?;
     repository_class.define_method(
         "clear_description",
