@@ -54,11 +54,11 @@ fn compile(compiler: &str, source: &Path, binary: &Path) -> Result<Command, Test
     for arg in lib_dir_args(&lib_dirs) {
         cmd.arg(arg);
     }
-    for arg in pkg_config(&["--cflags", "check"])? {
+    for arg in pkg_config(&["--cflags", "check", "jansson", "libcurl"])? {
         cmd.arg(arg);
     }
     cmd.arg("-l").arg(lib_name());
-    for arg in pkg_config(&["--libs", "check"])? {
+    for arg in pkg_config(&["--libs", "check", "jansson", "libcurl"])? {
         cmd.arg(arg);
     }
     cmd.arg("-o").arg(binary);

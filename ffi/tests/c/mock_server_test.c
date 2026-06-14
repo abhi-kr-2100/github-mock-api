@@ -1,6 +1,8 @@
 #include <check.h>
 #include <stdlib.h>
 #include <string.h>
+#include <curl/curl.h>
+#include <jansson.h>
 
 #include "github_mock_api/MockServer.h"
 #include "github_mock_api/MockBehavior.h"
@@ -12,6 +14,58 @@
 #define URI_PREFIX "http://127.0.0.1:"
 
 #define DS(s) ((DiplomatStringView){ .data = (s), .len = sizeof(s) - 1 })
+
+struct memory {
+  char *response;
+  size_t size;
+};
+
+static size_t cb(void *data, size_t size, size_t nmemb, void *userp) {
+  size_t realsize = size * nmemb;
+  struct memory *mem = (struct memory *)userp;
+
+  char *ptr = realloc(mem->response, mem->size + realsize + 1);
+  if(ptr == NULL)
+    return 0;  /* out of memory! */
+
+  mem->response = ptr;
+  memcpy(&(mem->response[mem->size]), data, realsize);
+  mem->size += realsize;
+  mem->response[mem->size] = 0;
+
+  return realsize;
+}
+
+static char* http_get(const char* url) {
+    CURL *curl_handle;
+    CURLcode res;
+    struct memory chunk = {0};
+
+    curl_handle = curl_easy_init();
+    curl_easy_setopt(curl_handle, CURLOPT_URL, url);
+    curl_easy_setopt(curl_handle, CURLOPT_WRITEFUNCTION, cb);
+    curl_easy_setopt(curl_handle, CURLOPT_WRITEDATA, (void *)&chunk);
+    curl_easy_setopt(curl_handle, CURLOPT_USERAGENT, "libcurl-agent/1.0");
+
+    res = curl_easy_perform(curl_handle);
+
+    if(res != CURLE_OK) {
+        if (chunk.response) free(chunk.response);
+        curl_easy_cleanup(curl_handle);
+        return NULL;
+    }
+
+    long response_code;
+    curl_easy_getinfo(curl_handle, CURLINFO_RESPONSE_CODE, &response_code);
+    if (response_code != 200) {
+        if (chunk.response) free(chunk.response);
+        curl_easy_cleanup(curl_handle);
+        return NULL;
+    }
+
+    curl_easy_cleanup(curl_handle);
+    return chunk.response;
+}
 
 static void assert_uri_valid(MockServer *server) {
     DiplomatWrite *write = diplomat_buffer_write_create(64);
@@ -252,7 +306,10 @@ START_TEST(test_repository_e2e) {
     ck_assert(started.is_ok);
     MockServer *server = started.ok;
 
-    Repository *repo = Repository_new(DS("octocat"), DS("hello-world"));
+    Repository *repo_builder = Repository_new(DS("octocat"), DS("hello-world"));
+    Repository *repo = Repository_with_description(repo_builder, DS("A test repository"));
+    Repository_destroy(repo_builder);
+
     MockServer_add_repository_result res = MockServer_add_repository(server, repo);
     ck_assert(res.is_ok);
 
@@ -261,12 +318,26 @@ START_TEST(test_repository_e2e) {
     const char *base_uri = (const char *)diplomat_buffer_write_get_bytes(write);
     size_t base_uri_len = diplomat_buffer_write_len(write);
 
-    char curl_cmd[256];
-    snprintf(curl_cmd, sizeof(curl_cmd), "curl -s -f %.*s/repos/octocat/hello-world > /dev/null", (int)base_uri_len, base_uri);
+    char url[256];
+    snprintf(url, sizeof(url), "%.*s/repos/octocat/hello-world", (int)base_uri_len, base_uri);
 
-    int curl_res = system(curl_cmd);
-    ck_assert_int_eq(curl_res, 0);
+    char *response = http_get(url);
+    ck_assert_ptr_nonnull(response);
 
+    json_error_t error;
+    json_t *root = json_loads(response, 0, &error);
+    ck_assert_ptr_nonnull(root);
+
+    ck_assert(json_is_object(root));
+    ck_assert_str_eq(json_string_value(json_object_get(root, "name")), "hello-world");
+    ck_assert_str_eq(json_string_value(json_object_get(root, "description")), "A test repository");
+
+    json_t *owner = json_object_get(root, "owner");
+    ck_assert(json_is_object(owner));
+    ck_assert_str_eq(json_string_value(json_object_get(owner, "login")), "octocat");
+
+    json_decref(root);
+    free(response);
     diplomat_buffer_write_destroy(write);
     Repository_destroy(repo);
     MockServer_stop_result stopped = MockServer_stop(server);
@@ -319,12 +390,21 @@ START_TEST(test_commit_e2e) {
     const char *base_uri = (const char *)diplomat_buffer_write_get_bytes(write);
     size_t base_uri_len = diplomat_buffer_write_len(write);
 
-    char curl_cmd[256];
-    snprintf(curl_cmd, sizeof(curl_cmd), "curl -s -f %.*s/repos/octocat/hello-world/commits/abc123def456 > /dev/null", (int)base_uri_len, base_uri);
+    char url[256];
+    snprintf(url, sizeof(url), "%.*s/repos/octocat/hello-world/commits/abc123def456", (int)base_uri_len, base_uri);
 
-    int curl_res = system(curl_cmd);
-    ck_assert_int_eq(curl_res, 0);
+    char *response = http_get(url);
+    ck_assert_ptr_nonnull(response);
 
+    json_error_t error;
+    json_t *root = json_loads(response, 0, &error);
+    ck_assert_ptr_nonnull(root);
+
+    ck_assert(json_is_object(root));
+    ck_assert_str_eq(json_string_value(json_object_get(root, "sha")), "abc123def456");
+
+    json_decref(root);
+    free(response);
     diplomat_buffer_write_destroy(write);
     Commit_destroy(commit);
     MockServer_stop_result stopped = MockServer_stop(server);
@@ -350,12 +430,14 @@ START_TEST(test_asset_e2e) {
     const char *base_uri = (const char *)diplomat_buffer_write_get_bytes(write);
     size_t base_uri_len = diplomat_buffer_write_len(write);
 
-    char curl_cmd[256];
-    snprintf(curl_cmd, sizeof(curl_cmd), "curl -s -f %.*s/octocat/hello-world/releases/download/v1.0.0/test.txt | grep -q \"hello world\"", (int)base_uri_len, base_uri);
+    char url[256];
+    snprintf(url, sizeof(url), "%.*s/octocat/hello-world/releases/download/v1.0.0/test.txt", (int)base_uri_len, base_uri);
 
-    int curl_res = system(curl_cmd);
-    ck_assert_int_eq(curl_res, 0);
+    char *response = http_get(url);
+    ck_assert_ptr_nonnull(response);
+    ck_assert_str_eq(response, "hello world");
 
+    free(response);
     diplomat_buffer_write_destroy(write);
     Asset_destroy(asset);
     MockServer_stop_result stopped = MockServer_stop(server);

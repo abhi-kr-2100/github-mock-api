@@ -40,19 +40,21 @@ fn compile(compiler: &str, source: &Path, binary: &Path) -> Result<Command, Test
         .arg(include)
         .arg(source);
 
-    // Add Catch2 flags
-    let catch2_flags = Command::new("pkg-config")
+    // Add pkg-config flags
+    let pkg_config_flags = Command::new("pkg-config")
         .arg("--cflags")
         .arg("--libs")
         .arg("catch2-with-main")
+        .arg("curlpp")
+        .arg("nlohmann_json")
         .output()
-        .map_err(|_| TestError::Catch2NotFound)?;
+        .map_err(|_| TestError::Catch2NotFound)?; // We reuse Catch2NotFound or could define a more generic one
 
-    if !catch2_flags.status.success() {
+    if !pkg_config_flags.status.success() {
         return Err(TestError::Catch2NotFound);
     }
 
-    let flags = String::from_utf8_lossy(&catch2_flags.stdout);
+    let flags = String::from_utf8_lossy(&pkg_config_flags.stdout);
     for flag in flags.split_whitespace() {
         cmd.arg(flag);
     }

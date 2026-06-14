@@ -17,14 +17,18 @@
           cargo-llvm-cov
           catch2_3
           check
+          curl
+          curlpp
           clang
           clippy
           dart
           go-task
+          jansson
           jna
           kotlin
           libclang
           llvm
+          nlohmann_json
           pkg-config
           python3
           python3Packages.pytest
