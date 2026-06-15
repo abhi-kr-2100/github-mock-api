@@ -88,7 +88,7 @@ impl SimpleUser {
             url: format!("https://api.github.com/users/{login}"),
             html_url: format!("https://github.com/{login}"),
             followers_url: format!("https://api.github.com/users/{login}/followers"),
-            following_url: format!("https://api.github.com/users/{login}/following"),
+            following_url: format!("https://api.github.com/users/{login}/following{{/other_user}}"),
             gists_url: format!("https://api.github.com/users/{login}/gists{{/gist_id}}"),
             starred_url: format!("https://api.github.com/users/{login}/starred{{/owner}}{{/repo}}"),
             subscriptions_url: format!("https://api.github.com/users/{login}/subscriptions"),
@@ -182,5 +182,14 @@ mod tests {
     fn test_load_from_file_json_error() {
         let result = Commit::load_from_file("testing/data/commits_invalid.json", "o", "r");
         assert!(matches!(result, Err(LoadError::Json { .. })));
+    }
+
+    #[test]
+    fn test_simple_user_new_following_url() {
+        let user = SimpleUser::new("octocat");
+        assert_eq!(
+            user.following_url,
+            "https://api.github.com/users/octocat/following{/other_user}"
+        );
     }
 }
