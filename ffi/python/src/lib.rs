@@ -1,6 +1,6 @@
 use std::sync::Mutex;
 
-use ::github_mock_api::{Error as MockApiError, MockServer as RustMockServer};
+use ::github_mock_api::{Error as MockApiError, LoadError, MockServer as RustMockServer};
 use github_mock_api_ffi_common::{CommonError, parse_host, runtime};
 use pyo3::{
     PyErr,
@@ -33,6 +33,17 @@ fn mock_api_error(err: MockApiError) -> PyErr {
 
 fn lock_error() -> PyErr {
     PyErr::new::<pyo3::exceptions::PyRuntimeError, _>("mock server lock poisoned")
+}
+
+fn api_load_error(err: LoadError) -> PyErr {
+    match err {
+        LoadError::Io { source, .. } => {
+            PyErr::new::<pyo3::exceptions::PyIOError, _>(source.to_string())
+        }
+        LoadError::Json { source, .. } => {
+            PyErr::new::<pyo3::exceptions::PyValueError, _>(source.to_string())
+        }
+    }
 }
 
 #[pyclass(
@@ -105,6 +116,15 @@ impl Repository {
     #[staticmethod]
     pub fn builder(owner: String, name: String) -> RepositoryBuilder {
         RepositoryBuilder::new(owner, name)
+    }
+
+    #[staticmethod]
+    pub fn load_from_file(path: String) -> PyResult<Vec<Self>> {
+        let repos = ::github_mock_api::Repository::load_from_file(path).map_err(api_load_error)?;
+        Ok(repos
+            .into_iter()
+            .map(|inner| Repository { inner })
+            .collect())
     }
 }
 
@@ -184,6 +204,16 @@ impl Release {
     pub fn builder(owner: String, repo: String, tag_name: String) -> ReleaseBuilder {
         ReleaseBuilder::new(owner, repo, tag_name)
     }
+
+    #[staticmethod]
+    pub fn load_from_file(path: String, owner: String, repo: String) -> PyResult<Vec<Self>> {
+        let releases = ::github_mock_api::Release::load_from_file(path, &owner, &repo)
+            .map_err(api_load_error)?;
+        Ok(releases
+            .into_iter()
+            .map(|inner| Release { inner })
+            .collect())
+    }
 }
 
 #[pyclass(module = "github_mock_api", from_py_object)]
@@ -255,6 +285,13 @@ impl Commit {
     #[staticmethod]
     pub fn builder(owner: String, repo: String) -> CommitBuilder {
         CommitBuilder::new(owner, repo)
+    }
+
+    #[staticmethod]
+    pub fn load_from_file(path: String, owner: String, repo: String) -> PyResult<Vec<Self>> {
+        let commits = ::github_mock_api::Commit::load_from_file(path, &owner, &repo)
+            .map_err(api_load_error)?;
+        Ok(commits.into_iter().map(|inner| Commit { inner }).collect())
     }
 }
 
