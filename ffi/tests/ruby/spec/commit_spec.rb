@@ -46,5 +46,21 @@ RSpec.describe GitHubMockAPI::Commit do
       expect(data["sha"]).to eq("abc123def")
       expect(data["commit"]["message"]).to eq("Initial commit")
     end
+
+    it "can register loaded commits with the server" do
+      path = File.expand_path("../../../../../testing/data/commits.json", __FILE__)
+      commits = described_class.load_from_file(path, owner, repo)
+      expect(commits).to be_an(Array)
+      expect(commits.size).to eq(30)
+
+      commits.each { |c| server.add_commit(c) }
+
+      uri = URI("#{server.uri}/repos/#{owner}/#{repo}/commits")
+      response = Net::HTTP.get_response(uri)
+      expect(response.code).to eq("200")
+      data = JSON.parse(response.body)
+      expect(data.size).to eq(30)
+      expect(data[0]["sha"]).to eq("9291e608e354242c8ff12d47896799d456719922")
+    end
   end
 end

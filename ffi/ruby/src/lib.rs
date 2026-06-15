@@ -205,6 +205,25 @@ impl Commit {
         *inner = inner.clone().author_email(email);
         Ok(rb_self.into_value_with(ruby))
     }
+
+    fn load_from_file(
+        ruby: &Ruby,
+        path: String,
+        owner: String,
+        repo: String,
+    ) -> Result<magnus::Value, Error> {
+        let commits =
+            RustCommit::load_from_file(path, &owner, &repo).map_err(|err| load_error(ruby, err))?;
+        let ary = ruby.ary_new();
+        for inner in commits {
+            ary.push(Self {
+                inner: Mutex::new(inner),
+                owner: owner.clone(),
+                repo: repo.clone(),
+            })?;
+        }
+        Ok(ary.into_value_with(ruby))
+    }
 }
 
 #[wrap(class = "GitHubMockAPI::Asset", free_immediately, size)]
@@ -300,6 +319,25 @@ impl Release {
         let mut inner = rb_self.inner.lock().map_err(|_| lock_error(ruby))?;
         *inner = inner.clone().created_at(created_at);
         Ok(rb_self.into_value_with(ruby))
+    }
+
+    fn load_from_file(
+        ruby: &Ruby,
+        path: String,
+        owner: String,
+        repo: String,
+    ) -> Result<magnus::Value, Error> {
+        let releases = RustRelease::load_from_file(path, &owner, &repo)
+            .map_err(|err| load_error(ruby, err))?;
+        let ary = ruby.ary_new();
+        for inner in releases {
+            ary.push(Self {
+                inner: Mutex::new(inner),
+                owner: owner.clone(),
+                repo: repo.clone(),
+            })?;
+        }
+        Ok(ary.into_value_with(ruby))
     }
 }
 
@@ -498,6 +536,7 @@ pub fn init(ruby: &Ruby) -> Result<(), Error> {
 
     let commit_class = module.define_class("Commit", ruby.class_object())?;
     commit_class.define_singleton_method("new", function!(Commit::new, 2))?;
+    commit_class.define_singleton_method("load_from_file", function!(Commit::load_from_file, 3))?;
     commit_class.define_method("sha", method!(Commit::sha, 1))?;
     commit_class.define_method("message", method!(Commit::message, 1))?;
     commit_class.define_method("author_name", method!(Commit::author_name, 1))?;
@@ -505,6 +544,8 @@ pub fn init(ruby: &Ruby) -> Result<(), Error> {
 
     let release_class = module.define_class("Release", ruby.class_object())?;
     release_class.define_singleton_method("new", function!(Release::new, 3))?;
+    release_class
+        .define_singleton_method("load_from_file", function!(Release::load_from_file, 3))?;
     release_class.define_method("name", method!(Release::name, 1))?;
     release_class.define_method("body", method!(Release::body, 1))?;
     release_class.define_method("target_commitish", method!(Release::target_commitish, 1))?;
