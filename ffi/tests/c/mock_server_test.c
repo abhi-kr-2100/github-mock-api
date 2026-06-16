@@ -8,12 +8,13 @@
 #include "github_mock_api/MockBehavior.h"
 #include "github_mock_api/Repository.h"
 #include "github_mock_api/Commit.h"
+#include "github_mock_api/Release.h"
 #include "github_mock_api/Asset.h"
 #include "github_mock_api/diplomat_runtime.h"
 
 #define URI_PREFIX "http://127.0.0.1:"
 
-#define DS(s) ((DiplomatStringView){ .data = (s), .len = sizeof(s) - 1 })
+#define DS(s) ((DiplomatStringView){ .data = (s), .len = strlen(s) })
 
 struct memory {
   char *response;
@@ -446,6 +447,49 @@ START_TEST(test_asset_e2e) {
 }
 END_TEST
 
+START_TEST(test_release_e2e) {
+    MockServer_start_result started = MockServer_start();
+    ck_assert(started.is_ok);
+    MockServer *server = started.ok;
+
+    const char *custom_timestamp = "2023-12-25T12:00:00Z";
+    Release *release_builder = Release_new(DS("octocat"), DS("hello-world"), DS("v1.0.0"));
+    Release *release = Release_with_created_at(release_builder, DS(custom_timestamp));
+    Release_destroy(release_builder);
+
+    MockServer_add_release_result res = MockServer_add_release(server, release);
+    ck_assert(res.is_ok);
+
+    DiplomatWrite *write = diplomat_buffer_write_create(64);
+    MockServer_uri(server, write);
+    const char *base_uri = (const char *)diplomat_buffer_write_get_bytes(write);
+    size_t base_uri_len = diplomat_buffer_write_len(write);
+
+    char url[256];
+    snprintf(url, sizeof(url), "%.*s/repos/octocat/hello-world/releases/tags/v1.0.0", (int)base_uri_len, base_uri);
+
+    char *response = http_get(url);
+    ck_assert_ptr_nonnull(response);
+
+    json_error_t error;
+    json_t *root = json_loads(response, 0, &error);
+    ck_assert_ptr_nonnull(root);
+
+    ck_assert(json_is_object(root));
+    ck_assert_str_eq(json_string_value(json_object_get(root, "tag_name")), "v1.0.0");
+    ck_assert_str_eq(json_string_value(json_object_get(root, "created_at")), custom_timestamp);
+    ck_assert_str_eq(json_string_value(json_object_get(root, "published_at")), custom_timestamp);
+
+    json_decref(root);
+    free(response);
+    diplomat_buffer_write_destroy(write);
+    Release_destroy(release);
+    MockServer_stop_result stopped = MockServer_stop(server);
+    ck_assert(stopped.is_ok);
+    MockServer_destroy(server);
+}
+END_TEST
+
 Suite *mock_server_suite(void) {
     Suite *s = suite_create("MockServer");
     TCase *tc_core = tcase_create("Core");
@@ -464,6 +508,7 @@ Suite *mock_server_suite(void) {
     tcase_add_test(tc_core, test_add_commit);
     tcase_add_test(tc_core, test_commit_e2e);
     tcase_add_test(tc_core, test_asset_e2e);
+    tcase_add_test(tc_core, test_release_e2e);
 
     suite_add_tcase(s, tc_core);
     return s;
