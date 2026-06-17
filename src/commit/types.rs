@@ -52,8 +52,8 @@ pub struct SimpleUser {
     pub id: u64,
     pub node_id: String,
     pub avatar_url: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub gravatar_id: Option<String>,
+    #[serde(default)]
+    pub gravatar_id: String,
     pub url: String,
     pub html_url: String,
     pub followers_url: String,
@@ -84,7 +84,7 @@ impl SimpleUser {
             id,
             node_id: format!("mock_node_id_{id}"),
             avatar_url: format!("https://avatars.githubusercontent.com/u/{id}?v=4"),
-            gravatar_id: None,
+            gravatar_id: String::new(),
             url: format!("https://api.github.com/users/{login}"),
             html_url: format!("https://github.com/{login}"),
             followers_url: format!("https://api.github.com/users/{login}/followers"),
@@ -192,5 +192,14 @@ mod tests {
             user.following_url,
             "https://api.github.com/users/octocat/following{/other_user}"
         );
+        assert_eq!(user.gravatar_id, "");
+    }
+
+    #[test]
+    fn test_simple_user_serialization() {
+        let user = SimpleUser::new("octocat");
+        let json = serde_json::to_string(&user).unwrap();
+        let val: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert_eq!(val["gravatar_id"], "");
     }
 }
