@@ -279,13 +279,20 @@ START_TEST(test_add_repository) {
     ck_assert(started.is_ok);
     MockServer *server = started.ok;
 
-    Repository *repo_builder = Repository_new(DS("octocat"), DS("hello-world"));
-    Repository *repo = Repository_with_description(repo_builder, DS("A test repository"));
+    Repository_new_result repo_new_res = Repository_new(DS("octocat"), DS("hello-world"));
+    ck_assert(repo_new_res.is_ok);
+    Repository *repo_builder = repo_new_res.ok;
+
+    Repository_with_description_result repo_with_desc_res = Repository_with_description(repo_builder, DS("A test repository"));
+    ck_assert(repo_with_desc_res.is_ok);
+    Repository *repo = repo_with_desc_res.ok;
     Repository_destroy(repo_builder);
 
     Repository *repo2 = Repository_with_private(repo, true);
     Repository *repo3 = Repository_with_stargazers_count(repo2, 42);
-    Repository *repo4 = Repository_with_default_branch(repo3, DS("develop"));
+    Repository_with_default_branch_result repo_with_branch_res = Repository_with_default_branch(repo3, DS("develop"));
+    ck_assert(repo_with_branch_res.is_ok);
+    Repository *repo4 = repo_with_branch_res.ok;
 
     MockServer_add_repository_result res = MockServer_add_repository(server, repo4);
     ck_assert(res.is_ok);
@@ -306,8 +313,13 @@ START_TEST(test_repository_e2e) {
     ck_assert(started.is_ok);
     MockServer *server = started.ok;
 
-    Repository *repo_builder = Repository_new(DS("octocat"), DS("hello-world"));
-    Repository *repo = Repository_with_description(repo_builder, DS("A test repository"));
+    Repository_new_result repo_new_res = Repository_new(DS("octocat"), DS("hello-world"));
+    ck_assert(repo_new_res.is_ok);
+    Repository *repo_builder = repo_new_res.ok;
+
+    Repository_with_description_result repo_with_desc_res = Repository_with_description(repo_builder, DS("A test repository"));
+    ck_assert(repo_with_desc_res.is_ok);
+    Repository *repo = repo_with_desc_res.ok;
     Repository_destroy(repo_builder);
 
     MockServer_add_repository_result res = MockServer_add_repository(server, repo);
@@ -346,18 +358,80 @@ START_TEST(test_repository_e2e) {
 }
 END_TEST
 
+START_TEST(test_repository_clear_description_e2e) {
+    MockServer_start_result started = MockServer_start();
+    ck_assert(started.is_ok);
+    MockServer *server = started.ok;
+
+    Repository_new_result repo_new_res = Repository_new(DS("octocat"), DS("hello-world"));
+    ck_assert(repo_new_res.is_ok);
+    Repository *repo_builder = repo_new_res.ok;
+
+    Repository_with_description_result repo_with_desc_res = Repository_with_description(repo_builder, DS("To be cleared"));
+    ck_assert(repo_with_desc_res.is_ok);
+    Repository *repo_with_desc = repo_with_desc_res.ok;
+
+    Repository *repo = Repository_with_clear_description(repo_with_desc);
+    Repository_destroy(repo_builder);
+    Repository_destroy(repo_with_desc);
+
+    MockServer_add_repository_result res = MockServer_add_repository(server, repo);
+    ck_assert(res.is_ok);
+
+    DiplomatWrite *write = diplomat_buffer_write_create(64);
+    MockServer_uri(server, write);
+    const char *base_uri = (const char *)diplomat_buffer_write_get_bytes(write);
+    size_t base_uri_len = diplomat_buffer_write_len(write);
+
+    char url[256];
+    snprintf(url, sizeof(url), "%.*s/repos/octocat/hello-world", (int)base_uri_len, base_uri);
+
+    char *response = http_get(url);
+    ck_assert_ptr_nonnull(response);
+
+    json_error_t error;
+    json_t *root = json_loads(response, 0, &error);
+    ck_assert_ptr_nonnull(root);
+
+    ck_assert(json_is_object(root));
+    ck_assert_str_eq(json_string_value(json_object_get(root, "name")), "hello-world");
+    ck_assert(json_is_null(json_object_get(root, "description")));
+
+    json_decref(root);
+    free(response);
+    diplomat_buffer_write_destroy(write);
+    Repository_destroy(repo);
+    MockServer_stop_result stopped = MockServer_stop(server);
+    ck_assert(stopped.is_ok);
+    MockServer_destroy(server);
+}
+END_TEST
+
 START_TEST(test_add_commit) {
     MockServer_start_result started = MockServer_start();
     ck_assert(started.is_ok);
     MockServer *server = started.ok;
 
-    Commit *commit_builder = Commit_new(DS("octocat"), DS("hello-world"));
-    Commit *commit = Commit_with_message(commit_builder, DS("A test commit"));
+    Commit_new_result commit_new_res = Commit_new(DS("octocat"), DS("hello-world"));
+    ck_assert(commit_new_res.is_ok);
+    Commit *commit_builder = commit_new_res.ok;
+
+    Commit_with_message_result commit_with_msg_res = Commit_with_message(commit_builder, DS("A test commit"));
+    ck_assert(commit_with_msg_res.is_ok);
+    Commit *commit = commit_with_msg_res.ok;
     Commit_destroy(commit_builder);
 
-    Commit *commit2 = Commit_with_sha(commit, DS("abc123def456"));
-    Commit *commit3 = Commit_with_author_name(commit2, DS("Test User"));
-    Commit *commit4 = Commit_with_author_email(commit3, DS("test@example.com"));
+    Commit_with_sha_result commit_with_sha_res = Commit_with_sha(commit, DS("abc123def456"));
+    ck_assert(commit_with_sha_res.is_ok);
+    Commit *commit2 = commit_with_sha_res.ok;
+
+    Commit_with_author_name_result commit_with_name_res = Commit_with_author_name(commit2, DS("Test User"));
+    ck_assert(commit_with_name_res.is_ok);
+    Commit *commit3 = commit_with_name_res.ok;
+
+    Commit_with_author_email_result commit_with_email_res = Commit_with_author_email(commit3, DS("test@example.com"));
+    ck_assert(commit_with_email_res.is_ok);
+    Commit *commit4 = commit_with_email_res.ok;
 
     MockServer_add_commit_result res = MockServer_add_commit(server, commit4);
     ck_assert(res.is_ok);
@@ -378,8 +452,13 @@ START_TEST(test_commit_e2e) {
     ck_assert(started.is_ok);
     MockServer *server = started.ok;
 
-    Commit *commit_builder = Commit_new(DS("octocat"), DS("hello-world"));
-    Commit *commit = Commit_with_sha(commit_builder, DS("abc123def456"));
+    Commit_new_result commit_new_res = Commit_new(DS("octocat"), DS("hello-world"));
+    ck_assert(commit_new_res.is_ok);
+    Commit *commit_builder = commit_new_res.ok;
+
+    Commit_with_sha_result commit_with_sha_res = Commit_with_sha(commit_builder, DS("abc123def456"));
+    ck_assert(commit_with_sha_res.is_ok);
+    Commit *commit = commit_with_sha_res.ok;
     Commit_destroy(commit_builder);
 
     MockServer_add_commit_result res = MockServer_add_commit(server, commit);
@@ -420,7 +499,9 @@ START_TEST(test_asset_e2e) {
 
     const char content[] = "hello world";
     DiplomatU8View bytes = { .data = (const uint8_t*)content, .len = sizeof(content) - 1 };
-    Asset *asset = Asset_from_bytes(DS("test.txt"), bytes, DS("text/plain"));
+    Asset_from_bytes_result asset_res = Asset_from_bytes(DS("test.txt"), bytes, DS("text/plain"));
+    ck_assert(asset_res.is_ok);
+    Asset *asset = asset_res.ok;
 
     MockServer_add_asset_result res = MockServer_add_asset(server, DS("octocat"), DS("hello-world"), DS("v1.0.0"), asset);
     ck_assert(res.is_ok);
@@ -461,6 +542,7 @@ Suite *mock_server_suite(void) {
     tcase_add_test(tc_core, test_start_after_stop);
     tcase_add_test(tc_core, test_add_repository);
     tcase_add_test(tc_core, test_repository_e2e);
+    tcase_add_test(tc_core, test_repository_clear_description_e2e);
     tcase_add_test(tc_core, test_add_commit);
     tcase_add_test(tc_core, test_commit_e2e);
     tcase_add_test(tc_core, test_asset_e2e);

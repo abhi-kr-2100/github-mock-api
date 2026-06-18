@@ -9,11 +9,11 @@ fun main() {
             System.exit(1)
         }
 
-        val repo = io.github.abhi_kr_2100.github_mock_api_ffi.Repository.new_("octocat", "hello-world")
-            .withDescription("A test repository")
+        val repo = io.github.abhi_kr_2100.github_mock_api_ffi.Repository.new_("octocat", "hello-world").getOrThrow()
+            .withDescription("A test repository").getOrThrow()
             .withPrivate(true)
             .withStargazersCount(42uL)
-            .withDefaultBranch("develop")
+            .withDefaultBranch("develop").getOrThrow()
 
         server.addRepository(repo).getOrThrow()
 
@@ -26,11 +26,25 @@ fun main() {
             System.exit(1)
         }
 
-        val commit = io.github.abhi_kr_2100.github_mock_api_ffi.Commit.new_("octocat", "hello-world")
-            .withSha("abc123def456")
-            .withMessage("A test commit")
-            .withAuthorName("Test User")
-            .withAuthorEmail("test@example.com")
+        val repoClear = io.github.abhi_kr_2100.github_mock_api_ffi.Repository.new_("octocat", "hello-world").getOrThrow()
+            .withDescription("To be cleared").getOrThrow()
+            .withClearDescription()
+        server.addRepository(repoClear).getOrThrow()
+
+        val repoClearUrl = java.net.URL("$uri/repos/octocat/hello-world")
+        val repoClearConnection = repoClearUrl.openConnection() as java.net.HttpURLConnection
+        repoClearConnection.requestMethod = "GET"
+        val repoClearBody = repoClearConnection.inputStream.bufferedReader().readText()
+        if (repoClearBody.contains("\"description\":\"")) {
+            System.err.println("expected null description in $repoClearBody")
+            System.exit(1)
+        }
+
+        val commit = io.github.abhi_kr_2100.github_mock_api_ffi.Commit.new_("octocat", "hello-world").getOrThrow()
+            .withSha("abc123def456").getOrThrow()
+            .withMessage("A test commit").getOrThrow()
+            .withAuthorName("Test User").getOrThrow()
+            .withAuthorEmail("test@example.com").getOrThrow()
 
         server.addCommit(commit).getOrThrow()
 
@@ -43,7 +57,7 @@ fun main() {
             System.exit(1)
         }
 
-        val asset = io.github.abhi_kr_2100.github_mock_api_ffi.Asset.fromBytes("test.txt", "hello world".toByteArray().toUByteArray(), "text/plain")
+        val asset = io.github.abhi_kr_2100.github_mock_api_ffi.Asset.fromBytes("test.txt", "hello world".toByteArray().toUByteArray(), "text/plain").getOrThrow()
         server.addAsset("octocat", "hello-world", "v1.0.0", asset).getOrThrow()
 
         // Verify Asset with HTTP
