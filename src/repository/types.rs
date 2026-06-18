@@ -12,8 +12,7 @@ pub struct RepositoryOwner {
     pub node_id: String,
     pub avatar_url: String,
     pub gravatar_id: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub url: Option<String>,
+    pub url: String,
     pub html_url: String,
     pub repos_url: String,
     #[serde(rename = "type")]
@@ -29,7 +28,7 @@ impl RepositoryOwner {
             node_id: format!("mock_node_id_{id}"),
             avatar_url: format!("https://avatars.githubusercontent.com/u/{id}?v=4"),
             gravatar_id: String::new(),
-            url: Some(format!("https://api.github.com/users/{login}")),
+            url: format!("https://api.github.com/users/{login}"),
             html_url: format!("https://github.com/{login}"),
             repos_url: format!("https://api.github.com/users/{login}/repos"),
             owner_type: "User".to_string(),
@@ -175,5 +174,19 @@ mod tests {
     fn test_load_from_file_json_error() {
         let result = Repository::load_from_file("testing/data/repositories_invalid.json");
         assert!(matches!(result, Err(LoadError::Json { .. })));
+    }
+
+    #[test]
+    fn test_repository_owner_url_serialization() {
+        let owner = RepositoryOwner::new("octocat");
+        let json = serde_json::to_string(&owner).unwrap();
+        let val: serde_json::Value = serde_json::from_str(&json).unwrap();
+
+        assert!(val.get("url").is_some());
+        assert!(val.get("url").unwrap().is_string());
+        assert_eq!(
+            val.get("url").unwrap().as_str().unwrap(),
+            "https://api.github.com/users/octocat"
+        );
     }
 }
