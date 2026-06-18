@@ -17,8 +17,7 @@ pub struct SimpleUser {
     pub avatar_url: String,
     #[serde(default)]
     pub gravatar_id: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub url: Option<String>,
+    pub url: String,
     pub html_url: String,
     pub followers_url: String,
     pub following_url: String,
@@ -49,7 +48,7 @@ impl SimpleUser {
             node_id: format!("mock_node_id_{id}"),
             avatar_url: format!("https://avatars.githubusercontent.com/u/{id}?v=4"),
             gravatar_id: String::new(),
-            url: Some(format!("https://api.github.com/users/{login}")),
+            url: format!("https://api.github.com/users/{login}"),
             html_url: format!("https://github.com/{login}"),
             followers_url: format!("https://api.github.com/users/{login}/followers"),
             following_url: format!("https://api.github.com/users/{login}/following{{/other_user}}"),
@@ -194,5 +193,19 @@ mod tests {
     fn test_load_from_file_json_error() {
         let result = Release::load_from_file("testing/data/releases_invalid.json", "o", "r");
         assert!(matches!(result, Err(LoadError::Json { .. })));
+    }
+
+    #[test]
+    fn test_simple_user_url_serialization() {
+        let user = SimpleUser::new("octocat");
+        let json = serde_json::to_string(&user).unwrap();
+        let val: serde_json::Value = serde_json::from_str(&json).unwrap();
+
+        assert!(val.get("url").is_some());
+        assert!(val.get("url").unwrap().is_string());
+        assert_eq!(
+            val.get("url").unwrap().as_str().unwrap(),
+            "https://api.github.com/users/octocat"
+        );
     }
 }
