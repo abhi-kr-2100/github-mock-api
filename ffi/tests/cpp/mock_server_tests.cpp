@@ -333,3 +333,27 @@ TEST_CASE("MockServer serves added release", "[mock_server][network]") {
     auto json = nlohmann::json::parse(response.str());
     CHECK(json["tag_name"] == "v1.0.0");
 }
+
+TEST_CASE("MockServer serves added release with custom created_at", "[mock_server][network]") {
+    auto server = MockServer::start().ok().value();
+
+    auto release = Release::new_("octocat", "hello-world", "v1.0.0").ok().value();
+    auto release2 = release->with_created_at("2023-01-01T00:00:00Z").ok().value();
+
+    auto add_result = server->add_release(*release2);
+    REQUIRE(add_result.is_ok());
+
+    auto uri = server->uri() + "/repos/octocat/hello-world/releases/tags/v1.0.0";
+
+    curlpp::Cleanup cleaner;
+    curlpp::Easy request;
+    std::stringstream response;
+
+    request.setOpt(new curlpp::options::Url(uri));
+    request.setOpt(new curlpp::options::WriteStream(&response));
+    request.perform();
+
+    auto json = nlohmann::json::parse(response.str());
+    CHECK(json["tag_name"] == "v1.0.0");
+    CHECK(json["created_at"] == "2023-01-01T00:00:00Z");
+}

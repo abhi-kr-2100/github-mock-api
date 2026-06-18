@@ -271,5 +271,27 @@ void main() {
       expect(body, equals('hello world'));
       expect(response.headers.contentType?.toString(), equals('text/plain'));
     });
+
+    test('can add and retrieve a release with custom created_at', () async {
+      final server = MockServer.start();
+      addTearDown(server.stop);
+      final uri = server.uri();
+
+      final release = Release.new_('octocat', 'hello-world', 'v1.0.0')
+          .withCreatedAt('2023-01-01T00:00:00Z');
+
+      server.addRelease(release);
+
+      final client = HttpClient();
+      addTearDown(client.close);
+      final request = await client.getUrl(Uri.parse('$uri/repos/octocat/hello-world/releases/tags/v1.0.0'));
+      final response = await request.close();
+      final body = await response.transform(utf8.decoder).join();
+
+      expect(response.statusCode, equals(200));
+      final json = jsonDecode(body) as Map<String, dynamic>;
+      expect(json['tag_name'], equals('v1.0.0'));
+      expect(json['created_at'], equals('2023-01-01T00:00:00Z'));
+    });
   });
 }

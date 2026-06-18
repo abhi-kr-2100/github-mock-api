@@ -60,6 +60,24 @@ fun main() {
             System.exit(1)
         }
 
+        val release = io.github.abhi_kr_2100.github_mock_api_ffi.Release.new_("octocat", "hello-world", "v1.0.0")
+            .withCreatedAt("2023-01-01T00:00:00Z")
+        server.addRelease(release).getOrThrow()
+
+        // Verify Release with HTTP
+        val releaseUrl = java.net.URL("$uri/repos/octocat/hello-world/releases/tags/v1.0.0")
+        val releaseConnection = releaseUrl.openConnection() as java.net.HttpURLConnection
+        releaseConnection.requestMethod = "GET"
+        if (releaseConnection.responseCode != 200) {
+            System.err.println("expected 200 OK for release, got ${releaseConnection.responseCode}")
+            System.exit(1)
+        }
+        val releaseBody = releaseConnection.inputStream.bufferedReader().readText()
+        if (!releaseBody.contains("\"created_at\":\"2023-01-01T00:00:00Z\"")) {
+            System.err.println("expected custom created_at in release body, got '$releaseBody'")
+            System.exit(1)
+        }
+
         server.stop()
     } catch (e: Exception) {
         e.printStackTrace()
