@@ -211,6 +211,31 @@ TEST_CASE("MockServer serves added repository", "[mock_server][network]") {
     CHECK(json["owner"]["login"] == "octocat");
 }
 
+TEST_CASE("MockServer serves added repository with cleared description", "[mock_server][network]") {
+    auto server = MockServer::start().ok().value();
+
+    auto repo = Repository::new_("octocat", "hello-world").ok().value();
+    auto repo2 = repo->with_description("A test repository").ok().value();
+    auto repo3 = repo2->with_clear_description();
+
+    auto add_result = server->add_repository(*repo3);
+    REQUIRE(add_result.is_ok());
+
+    auto uri = server->uri() + "/repos/octocat/hello-world";
+
+    curlpp::Cleanup cleaner;
+    curlpp::Easy request;
+    std::stringstream response;
+
+    request.setOpt(new curlpp::options::Url(uri));
+    request.setOpt(new curlpp::options::WriteStream(&response));
+    request.perform();
+
+    auto json = nlohmann::json::parse(response.str());
+    CHECK(json["name"] == "hello-world");
+    CHECK(json["description"].is_null());
+}
+
 TEST_CASE("MockServer serves added repository with subscribers and network count", "[mock_server][network]") {
     auto server = MockServer::start().ok().value();
 
