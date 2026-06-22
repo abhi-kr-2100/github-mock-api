@@ -103,6 +103,13 @@ mod ffi {
             Box::new(new)
         }
 
+        /// Clear the description for the repository.
+        pub fn with_clear_description(&self) -> Box<Repository> {
+            let mut new = self.clone();
+            new.inner = new.inner.clear_description();
+            Box::new(new)
+        }
+
         /// Set whether the repository is private.
         pub fn with_private(&self, private: bool) -> Box<Repository> {
             let mut new = self.clone();
