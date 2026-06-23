@@ -138,6 +138,13 @@ mod ffi {
             Box::new(new)
         }
 
+        /// Clear the description for the repository.
+        pub fn with_clear_description(&self) -> Box<Repository> {
+            let mut new = self.clone();
+            new.inner = new.inner.clear_description();
+            Box::new(new)
+        }
+
         pub(crate) fn build(&self) -> RustRepository {
             self.inner.clone()
         }
