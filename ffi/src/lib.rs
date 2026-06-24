@@ -249,6 +249,13 @@ mod ffi {
             Box::new(new)
         }
 
+        /// Set the creation date for the release.
+        pub fn with_created_at(&self, created_at: &str) -> Box<Release> {
+            let mut new = self.clone();
+            new.inner = new.inner.created_at(created_at);
+            Box::new(new)
+        }
+
         pub(crate) fn build(&self) -> RustRelease {
             self.inner.clone()
         }
