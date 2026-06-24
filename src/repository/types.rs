@@ -14,14 +14,25 @@ pub struct RepositoryOwner {
     pub gravatar_id: String,
     pub url: String,
     pub html_url: String,
+    pub followers_url: String,
+    pub following_url: String,
+    pub gists_url: String,
+    pub starred_url: String,
+    pub subscriptions_url: String,
+    pub organizations_url: String,
     pub repos_url: String,
+    pub events_url: String,
+    pub received_events_url: String,
     #[serde(rename = "type")]
     pub owner_type: String,
+    pub site_admin: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub user_view_type: Option<String>,
 }
 
 impl RepositoryOwner {
     pub(crate) fn new(login: &str) -> Self {
-        let id = crate::util::hash(&format!("owner:{login}"));
+        let id = crate::util::hash(&format!("user:{login}"));
         Self {
             login: login.to_string(),
             id,
@@ -30,8 +41,18 @@ impl RepositoryOwner {
             gravatar_id: String::new(),
             url: format!("https://api.github.com/users/{login}"),
             html_url: format!("https://github.com/{login}"),
+            followers_url: format!("https://api.github.com/users/{login}/followers"),
+            following_url: format!("https://api.github.com/users/{login}/following{{/other_user}}"),
+            gists_url: format!("https://api.github.com/users/{login}/gists{{/gist_id}}"),
+            starred_url: format!("https://api.github.com/users/{login}/starred{{/owner}}{{/repo}}"),
+            subscriptions_url: format!("https://api.github.com/users/{login}/subscriptions"),
+            organizations_url: format!("https://api.github.com/users/{login}/orgs"),
             repos_url: format!("https://api.github.com/users/{login}/repos"),
+            events_url: format!("https://api.github.com/users/{login}/events{{/privacy}}"),
+            received_events_url: format!("https://api.github.com/users/{login}/received_events"),
             owner_type: "User".to_string(),
+            site_admin: false,
+            user_view_type: None,
         }
     }
 }
@@ -187,6 +208,38 @@ mod tests {
         assert_eq!(
             val.get("url").unwrap().as_str().unwrap(),
             "https://api.github.com/users/octocat"
+        );
+    }
+
+    #[test]
+    fn test_repository_owner_new_consistency() {
+        let login = "octocat";
+        let owner = RepositoryOwner::new(login);
+        let expected_id = crate::util::hash(&format!("user:{login}"));
+
+        assert_eq!(owner.login, login);
+        assert_eq!(owner.id, expected_id);
+        assert!(!owner.site_admin);
+        assert_eq!(owner.user_view_type, None);
+        assert_eq!(
+            owner.followers_url,
+            format!("https://api.github.com/users/{login}/followers")
+        );
+        assert_eq!(
+            owner.following_url,
+            format!("https://api.github.com/users/{login}/following{{/other_user}}")
+        );
+        assert_eq!(
+            owner.gists_url,
+            format!("https://api.github.com/users/{login}/gists{{/gist_id}}")
+        );
+        assert_eq!(
+            owner.starred_url,
+            format!("https://api.github.com/users/{login}/starred{{/owner}}{{/repo}}")
+        );
+        assert_eq!(
+            owner.events_url,
+            format!("https://api.github.com/users/{login}/events{{/privacy}}")
         );
     }
 }
