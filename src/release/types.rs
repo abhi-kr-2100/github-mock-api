@@ -41,7 +41,7 @@ impl SimpleUser {
     pub(crate) fn new(login: &str) -> Self {
         let id = crate::util::hash(&format!("user:{login}"));
         Self {
-            name: Some(login.to_string()),
+            name: None,
             email: None,
             login: login.to_string(),
             id,
@@ -193,6 +193,13 @@ mod tests {
     fn test_load_from_file_json_error() {
         let result = Release::load_from_file("testing/data/releases_invalid.json", "o", "r");
         assert!(matches!(result, Err(LoadError::Json { .. })));
+    }
+
+    #[test]
+    fn test_simple_user_new() {
+        let user = SimpleUser::new("octocat");
+        assert_eq!(user.login, "octocat");
+        assert!(user.name.is_none());
     }
 
     #[test]
