@@ -201,6 +201,28 @@ void main() {
       expect(json['default_branch'], equals('develop'));
     });
 
+    test('can clear repository description', () async {
+      final server = MockServer.start();
+      addTearDown(server.stop);
+      final uri = server.uri();
+
+      final repo = Repository.new_('octocat', 'hello-world')
+          .withDescription('Original description')
+          .withClearDescription();
+
+      server.addRepository(repo);
+
+      final client = HttpClient();
+      addTearDown(client.close);
+      final request = await client.getUrl(Uri.parse('$uri/repos/octocat/hello-world'));
+      final response = await request.close();
+      final body = await response.transform(utf8.decoder).join();
+
+      expect(response.statusCode, equals(200));
+      final json = jsonDecode(body) as Map<String, dynamic>;
+      expect(json['description'], isNull);
+    });
+
     test('can add and retrieve a repository with subscribers and network count', () async {
       final server = MockServer.start();
       addTearDown(server.stop);
