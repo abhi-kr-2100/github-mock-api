@@ -172,6 +172,35 @@ class TestMockServer:
             assert body[0]["commit"]["author"]["name"] == "Mona Octocat"
             assert body[0]["commit"]["author"]["email"] == "mona@github.com"
 
+    def test_add_commit_with_committer_and_dates(self, server: MockServer) -> None:
+        commit = (
+            Commit.builder("octocat", "hello-world")
+            .sha("1234567890abcdef1234567890abcdef12345678")
+            .message("Initial commit")
+            .author_name("Mona Octocat")
+            .author_email("mona@github.com")
+            .author_date("2023-01-01T00:00:00Z")
+            .committer_name("Committer Mona")
+            .committer_email("committer@github.com")
+            .committer_date("2023-01-02T00:00:00Z")
+            .build()
+        )
+        server.add_commit("octocat", "hello-world", commit)
+
+        url = f"{server.uri()}/repos/octocat/hello-world/commits"
+        with urllib.request.urlopen(url) as response:
+            assert response.status == 200
+            body = json.loads(response.read().decode())
+            assert len(body) == 1
+            assert body[0]["sha"] == "1234567890abcdef1234567890abcdef12345678"
+            assert body[0]["commit"]["message"] == "Initial commit"
+            assert body[0]["commit"]["author"]["name"] == "Mona Octocat"
+            assert body[0]["commit"]["author"]["email"] == "mona@github.com"
+            assert body[0]["commit"]["author"]["date"] == "2023-01-01T00:00:00Z"
+            assert body[0]["commit"]["committer"]["name"] == "Committer Mona"
+            assert body[0]["commit"]["committer"]["email"] == "committer@github.com"
+            assert body[0]["commit"]["committer"]["date"] == "2023-01-02T00:00:00Z"
+
     def test_add_asset(self, server: MockServer) -> None:
         content = b"hello world"
         asset = Asset.from_bytes("test.txt", content, "text/plain")
