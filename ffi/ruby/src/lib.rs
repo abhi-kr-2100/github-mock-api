@@ -206,6 +206,30 @@ impl Commit {
         Ok(rb_self.into_value_with(ruby))
     }
 
+    fn committer_name(
+        ruby: &Ruby,
+        rb_self: magnus::typed_data::Obj<Self>,
+        name: String,
+    ) -> Result<magnus::Value, Error> {
+        let mut inner = rb_self.inner.lock().map_err(|_| lock_error(ruby))?;
+        if let Some(ref mut committer) = inner.commit.committer {
+            committer.name = name;
+        }
+        Ok(rb_self.into_value_with(ruby))
+    }
+
+    fn committer_email(
+        ruby: &Ruby,
+        rb_self: magnus::typed_data::Obj<Self>,
+        email: String,
+    ) -> Result<magnus::Value, Error> {
+        let mut inner = rb_self.inner.lock().map_err(|_| lock_error(ruby))?;
+        if let Some(ref mut committer) = inner.commit.committer {
+            committer.email = email;
+        }
+        Ok(rb_self.into_value_with(ruby))
+    }
+
     fn load_from_file(
         ruby: &Ruby,
         path: String,
@@ -541,6 +565,8 @@ pub fn init(ruby: &Ruby) -> Result<(), Error> {
     commit_class.define_method("message", method!(Commit::message, 1))?;
     commit_class.define_method("author_name", method!(Commit::author_name, 1))?;
     commit_class.define_method("author_email", method!(Commit::author_email, 1))?;
+    commit_class.define_method("committer_name", method!(Commit::committer_name, 1))?;
+    commit_class.define_method("committer_email", method!(Commit::committer_email, 1))?;
 
     let release_class = module.define_class("Release", ruby.class_object())?;
     release_class.define_singleton_method("new", function!(Release::new, 3))?;
