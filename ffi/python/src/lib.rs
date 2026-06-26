@@ -334,6 +334,38 @@ impl CommitBuilder {
         new
     }
 
+    pub fn committer_name(&self, name: String) -> Self {
+        let mut new = self.clone();
+        if let Some(ref mut committer) = new.inner.commit.committer {
+            committer.name = name;
+        }
+        new
+    }
+
+    pub fn committer_email(&self, email: String) -> Self {
+        let mut new = self.clone();
+        if let Some(ref mut committer) = new.inner.commit.committer {
+            committer.email = email;
+        }
+        new
+    }
+
+    pub fn author_date(&self, date: String) -> Self {
+        let mut new = self.clone();
+        if let Some(ref mut author) = new.inner.commit.author {
+            author.date = date;
+        }
+        new
+    }
+
+    pub fn committer_date(&self, date: String) -> Self {
+        let mut new = self.clone();
+        if let Some(ref mut committer) = new.inner.commit.committer {
+            committer.date = date;
+        }
+        new
+    }
+
     pub fn build(&self) -> Commit {
         Commit {
             inner: self.inner.clone(),
