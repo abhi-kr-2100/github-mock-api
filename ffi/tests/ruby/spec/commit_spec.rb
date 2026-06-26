@@ -22,6 +22,10 @@ RSpec.describe GitHubMockAPI::Commit do
         .message("feat: add new feature")
         .author_name("Mona")
         .author_email("mona@github.com")
+        .author_date("2023-01-01T00:00:00Z")
+        .committer_name("Hubot")
+        .committer_email("hubot@github.com")
+        .committer_date("2023-01-02T00:00:00Z")
 
       expect(result).to eq(commit)
     end
@@ -62,6 +66,29 @@ RSpec.describe GitHubMockAPI::Commit do
       data = JSON.parse(response.body)
       expect(data["sha"]).to eq("abc123def")
       expect(data["commit"]["message"]).to eq("Initial commit")
+    end
+
+    it "can configure committer and dates" do
+      commit = described_class.new(owner, repo)
+        .sha("abc123def")
+        .author_name("Mona")
+        .author_date("2023-01-01T00:00:00Z")
+        .committer_name("Hubot")
+        .committer_email("hubot@github.com")
+        .committer_date("2023-01-02T00:00:00Z")
+
+      server.add_commit(commit)
+
+      uri = URI("#{server.uri}/repos/#{owner}/#{repo}/commits/abc123def")
+      response = Net::HTTP.get_response(uri)
+      data = JSON.parse(response.body)
+
+      expect(data["commit"]["author"]["name"]).to eq("Mona")
+      expect(data["commit"]["author"]["date"]).to eq("2023-01-01T00:00:00Z")
+      expect(data["commit"]["committer"]["name"]).to eq("Hubot")
+      expect(data["commit"]["committer"]["email"]).to eq("hubot@github.com")
+      expect(data["commit"]["committer"]["date"]).to eq("2023-01-02T00:00:00Z")
+      expect(data["committer"]["login"]).to eq(owner) # Top level committer login is set from owner in Mock implementation
     end
 
     it "can register loaded commits with the server" do
