@@ -14,9 +14,18 @@ pub struct RepositoryOwner {
     pub gravatar_id: String,
     pub url: String,
     pub html_url: String,
+    pub followers_url: String,
+    pub following_url: String,
+    pub gists_url: String,
+    pub starred_url: String,
+    pub subscriptions_url: String,
+    pub organizations_url: String,
     pub repos_url: String,
+    pub events_url: String,
+    pub received_events_url: String,
     #[serde(rename = "type")]
     pub owner_type: String,
+    pub site_admin: bool,
 }
 
 impl RepositoryOwner {
@@ -30,8 +39,17 @@ impl RepositoryOwner {
             gravatar_id: String::new(),
             url: format!("https://api.github.com/users/{login}"),
             html_url: format!("https://github.com/{login}"),
+            followers_url: format!("https://api.github.com/users/{login}/followers"),
+            following_url: format!("https://api.github.com/users/{login}/following{{/other_user}}"),
+            gists_url: format!("https://api.github.com/users/{login}/gists{{/gist_id}}"),
+            starred_url: format!("https://api.github.com/users/{login}/starred{{/owner}}{{/repo}}"),
+            subscriptions_url: format!("https://api.github.com/users/{login}/subscriptions"),
+            organizations_url: format!("https://api.github.com/users/{login}/orgs"),
             repos_url: format!("https://api.github.com/users/{login}/repos"),
+            events_url: format!("https://api.github.com/users/{login}/events{{/privacy}}"),
+            received_events_url: format!("https://api.github.com/users/{login}/received_events"),
             owner_type: "User".to_string(),
+            site_admin: false,
         }
     }
 }
@@ -188,5 +206,46 @@ mod tests {
             val.get("url").unwrap().as_str().unwrap(),
             "https://api.github.com/users/octocat"
         );
+    }
+
+    #[test]
+    fn test_repository_owner_new_fields() {
+        let owner = RepositoryOwner::new("octocat");
+        let json = serde_json::to_string(&owner).unwrap();
+        let val: serde_json::Value = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(
+            val["followers_url"],
+            "https://api.github.com/users/octocat/followers"
+        );
+        assert_eq!(
+            val["following_url"],
+            "https://api.github.com/users/octocat/following{/other_user}"
+        );
+        assert_eq!(
+            val["gists_url"],
+            "https://api.github.com/users/octocat/gists{/gist_id}"
+        );
+        assert_eq!(
+            val["starred_url"],
+            "https://api.github.com/users/octocat/starred{/owner}{/repo}"
+        );
+        assert_eq!(
+            val["subscriptions_url"],
+            "https://api.github.com/users/octocat/subscriptions"
+        );
+        assert_eq!(
+            val["organizations_url"],
+            "https://api.github.com/users/octocat/orgs"
+        );
+        assert_eq!(
+            val["events_url"],
+            "https://api.github.com/users/octocat/events{/privacy}"
+        );
+        assert_eq!(
+            val["received_events_url"],
+            "https://api.github.com/users/octocat/received_events"
+        );
+        assert_eq!(val["site_admin"], false);
     }
 }
