@@ -22,9 +22,9 @@ tasks:
       - cargo clippy {{.CARGO_FLAGS}} -- -D warnings
 
   test:
-    desc: Run tests for all crates
+    desc: Run tests for all crates with coverage report
     cmds:
-      - cargo test {{.CARGO_FLAGS}} -- --nocapture
+      - cargo cov-term {{.CARGO_FLAGS}} -- --nocapture
 
   verify:
     desc: Format, lint autofix, lint, then test all crates
