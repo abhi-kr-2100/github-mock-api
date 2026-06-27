@@ -8,8 +8,6 @@ use crate::util::{LoadError, load_json_from_file};
 #[serde(rename_all = "snake_case")]
 pub struct SimpleUser {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub email: Option<String>,
     pub login: String,
     pub id: u64,
@@ -41,7 +39,6 @@ impl SimpleUser {
     pub(crate) fn new(login: &str) -> Self {
         let id = crate::util::hash(&format!("user:{login}"));
         Self {
-            name: Some(login.to_string()),
             email: None,
             login: login.to_string(),
             id,
