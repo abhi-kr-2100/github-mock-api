@@ -1,4 +1,0 @@
-lib-name = "github_mock_api_ffi"
-
-[kotlin]
-domain = "io.github.abhi_kr_2100"

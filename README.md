@@ -1,16 +1,8 @@
 # GitHub Mock API
 
-A server and library for mocking the GitHub API. Written in Rust, with cross-language bindings available — see [docs/cross-language.md](docs/cross-language.md).
+A Rust library for mocking the GitHub API.
 
 ## Usage
-
-### As a Standalone Binary
-
-```bash
-github-mock-api --host 0.0.0.0 --port 3000
-```
-
-### As a Library
 
 Add to your `Cargo.toml`:
 
