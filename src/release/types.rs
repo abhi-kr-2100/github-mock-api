@@ -8,6 +8,8 @@ use crate::util::{LoadError, load_json_from_file};
 #[serde(rename_all = "snake_case")]
 pub struct SimpleUser {
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub email: Option<String>,
     pub login: String,
     pub id: u64,
@@ -39,6 +41,7 @@ impl SimpleUser {
     pub(crate) fn new(login: &str) -> Self {
         let id = crate::util::hash(&format!("user:{login}"));
         Self {
+            name: None,
             email: None,
             login: login.to_string(),
             id,
@@ -204,5 +207,18 @@ mod tests {
             val.get("url").unwrap().as_str().unwrap(),
             "https://api.github.com/users/octocat"
         );
+    }
+
+    #[test]
+    fn test_simple_user_name_serialization() {
+        let mut user = SimpleUser::new("octocat");
+        let json = serde_json::to_string(&user).unwrap();
+        let val: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert!(val.get("name").is_none());
+
+        user.name = Some("The Octocat".to_string());
+        let json = serde_json::to_string(&user).unwrap();
+        let val: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert_eq!(val["name"], "The Octocat");
     }
 }
