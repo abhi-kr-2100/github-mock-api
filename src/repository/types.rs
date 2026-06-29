@@ -26,6 +26,8 @@ pub struct RepositoryOwner {
     #[serde(rename = "type")]
     pub owner_type: String,
     pub site_admin: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub user_view_type: Option<String>,
 }
 
 impl RepositoryOwner {
@@ -50,6 +52,7 @@ impl RepositoryOwner {
             received_events_url: format!("https://api.github.com/users/{login}/received_events"),
             owner_type: "User".to_string(),
             site_admin: false,
+            user_view_type: Some("public".to_string()),
         }
     }
 }
@@ -247,5 +250,6 @@ mod tests {
             "https://api.github.com/users/octocat/received_events"
         );
         assert_eq!(val["site_admin"], false);
+        assert_eq!(val["user_view_type"], "public");
     }
 }
